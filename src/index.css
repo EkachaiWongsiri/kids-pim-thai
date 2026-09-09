@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    letter-spacing: 0.025em;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: 0.03em;
+    line-height: 1.35;
+  }
+
+  p, span, label, button, input, textarea {
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Custom pulse glow keyframes */
+@keyframes targetKeyGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px #f59e0b, 0 0 30px #f59e0b;
+    transform: scale(1.05);
+  }
+  50% {
+    box-shadow: 0 0 5px #f59e0b;
+    transform: scale(1.0);
+  }
+}
+
+.key-glow {
+  animation: targetKeyGlow 0.9s infinite ease-in-out;
+}
