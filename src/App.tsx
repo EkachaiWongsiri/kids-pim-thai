@@ -4,6 +4,7 @@ import { VirtualKeyboard } from './components/VirtualKeyboard';
 import { GameHeader } from './components/GameHeader';
 import { StageSelector } from './components/StageSelector';
 import { CustomWordModal } from './components/CustomWordModal';
+import { GameSettingsModal } from './components/GameSettingsModal';
 import { GameOverModal } from './components/GameOverModal';
 import { VictoryModal } from './components/VictoryModal';
 import { PortalNavbar } from './components/PortalNavbar';
@@ -25,10 +26,13 @@ export function App() {
   const [language, setLanguage] = useState<Language>('th');
   const [currentStage, setCurrentStage] = useState<Stage>(THAI_STAGES[0]);
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(0.8);
+  const [targetWordsCount, setTargetWordsCount] = useState<number>(10);
+  const [maxConcurrentWords, setMaxConcurrentWords] = useState<number>(4);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(true);
   const [isSfxMuted, setIsSfxMuted] = useState<boolean>(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Ready State (Start overlay before words fall)
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
@@ -54,6 +58,7 @@ export function App() {
   // Modals
   const [isStageSelectOpen, setIsStageSelectOpen] = useState<boolean>(false);
   const [isCustomWordsOpen, setIsCustomWordsOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [activePortalModal, setActivePortalModal] = useState<'about' | 'contact' | 'privacy' | 'terms' | null>(null);
 
   // High-performance simulation entity refs
@@ -72,6 +77,10 @@ export function App() {
   const maxComboRef = useRef<number>(0);
   const livesRef = useRef<number>(5);
 
+  const effectiveTargetCount = currentStage.category === 'custom'
+    ? currentStage.targetCount
+    : targetWordsCount;
+
   const stateRef = useRef({
     gameState,
     isPaused,
@@ -82,6 +91,8 @@ export function App() {
     lettersTyped,
     mistakes,
     startTime,
+    targetCount: effectiveTargetCount,
+    maxConcurrentWords,
   });
 
   // Keep stateRef synced
@@ -96,6 +107,8 @@ export function App() {
       lettersTyped,
       mistakes,
       startTime,
+      targetCount: effectiveTargetCount,
+      maxConcurrentWords,
     };
     livesRef.current = lives;
     scoreRef.current = score;
@@ -112,12 +125,39 @@ export function App() {
     lettersTyped,
     mistakes,
     startTime,
+    effectiveTargetCount,
+    maxConcurrentWords,
     lives,
     score,
     combo,
     maxCombo,
     wordsCompleted,
   ]);
+
+  // Fullscreen state listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.warn('Fullscreen request failed:', err);
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch((err) => {
+          console.warn('Exit fullscreen failed:', err);
+        });
+      }
+    }
+  }, []);
 
   // Load saved settings from LocalStorage
   useEffect(() => {
@@ -127,6 +167,8 @@ export function App() {
     setIsBgmMuted(!saved.bgmEnabled);
     setIsKeyboardVisible(saved.keyboardVisible);
     setSpeedMultiplier(saved.speedMultiplier);
+    setTargetWordsCount(saved.targetWordsCount || 10);
+    setMaxConcurrentWords(saved.maxConcurrentWords || 4);
 
     audioService.isSfxMuted = !saved.sfxEnabled;
     audioService.isVoiceMuted = !saved.voiceEnabled;
@@ -245,6 +287,7 @@ export function App() {
       startTime: curStartTime,
       mistakes: curMistakes,
       lettersTyped: curLettersTyped,
+      targetCount: curTargetCount,
     } = stateRef.current;
 
     if (curState !== 'playing' || !curStarted || curPaused || wordsRef.current.length === 0) return;
@@ -322,7 +365,7 @@ export function App() {
           StorageService.incrementTotalWordsTyped();
 
           // Check Victory
-          if (newCompleted >= curStage.targetCount) {
+          if (newCompleted >= curTargetCount) {
             setGameState('victory');
             setEndTime(Date.now());
             audioService.playVictoryFanfare();
@@ -416,7 +459,7 @@ export function App() {
           setWordsCompleted(newCompleted);
           StorageService.incrementTotalWordsTyped();
 
-          if (newCompleted >= curStage.targetCount) {
+          if (newCompleted >= curTargetCount) {
             setGameState('victory');
             setEndTime(Date.now());
             audioService.playVictoryFanfare();
@@ -488,15 +531,17 @@ export function App() {
         isGameStarted: curStarted,
         speedMultiplier: curSpeedMult,
         currentStage: curStage,
+        targetCount: curTargetCount,
+        maxConcurrentWords: curMaxConcurrent,
       } = stateRef.current;
 
       if (curState === 'playing' && curStarted && !curPaused) {
         const now = Date.now();
         const words = wordsRef.current;
 
-        // 1. Spawning
-        const maxWordsOnScreen = 4;
-        const totalToSpawn = curStage.targetCount + 2;
+        // 1. Spawning with user-configured concurrent count and target count
+        const maxWordsOnScreen = curMaxConcurrent || 4;
+        const totalToSpawn = curTargetCount + 2;
 
         if (
           now >= nextSpawnTimeRef.current &&
@@ -549,51 +594,53 @@ export function App() {
               y: groundThreshold - 10,
               color: '#ef4444',
               alpha: 1.0,
-              vy: -1.2,
+              vy: -1.0,
             });
           } else {
             surviving.push(w);
           }
         }
 
-        if (livesLostCount > 0) {
-          wordsRef.current = surviving;
-          const newLives = Math.max(0, livesRef.current - livesLostCount);
-          livesRef.current = newLives;
-          setLives(newLives);
+        wordsRef.current = surviving;
 
+        if (livesLostCount > 0) {
           comboRef.current = 0;
           setCombo(0);
 
-          if (newLives <= 0) {
+          const updatedLives = Math.max(0, livesRef.current - livesLostCount);
+          livesRef.current = updatedLives;
+          setLives(updatedLives);
+
+          if (updatedLives <= 0) {
             setGameState('gameover');
+            setEndTime(Date.now());
             audioService.playGameOverSound();
           }
+
           updateTargetChar();
         }
 
-        // 3. Update Particles
+        // 3. Update Laser Beams
+        const lasers = lasersRef.current;
+        for (let i = lasers.length - 1; i >= 0; i--) {
+          lasers[i].alpha -= delta * 3.5;
+          if (lasers[i].alpha <= 0) {
+            lasers.splice(i, 1);
+          }
+        }
+
+        // 4. Update Explosion Particles
         const particles = particlesRef.current;
         for (let i = particles.length - 1; i >= 0; i--) {
           const p = particles[i];
           p.x += p.vx;
           p.y += p.vy;
-          p.vy += 0.15;
+          p.vy += 0.12; // Gravity
           p.life += 1;
-          p.alpha = 1.0 - p.life / p.maxLife;
+          p.alpha = Math.max(0, 1 - p.life / p.maxLife);
 
-          if (p.life >= p.maxLife) {
+          if (p.life >= p.maxLife || p.alpha <= 0) {
             particles.splice(i, 1);
-          }
-        }
-
-        // 4. Update Laser Beams
-        const lasers = lasersRef.current;
-        for (let i = lasers.length - 1; i >= 0; i--) {
-          const laser = lasers[i];
-          laser.alpha -= delta * 4;
-          if (laser.alpha <= 0) {
-            lasers.splice(i, 1);
           }
         }
 
@@ -652,6 +699,16 @@ export function App() {
     StorageService.saveSettings({ speedMultiplier: spd });
   };
 
+  const handleTargetWordsCountChange = (count: number) => {
+    setTargetWordsCount(count);
+    StorageService.saveSettings({ targetWordsCount: count });
+  };
+
+  const handleMaxConcurrentWordsChange = (count: number) => {
+    setMaxConcurrentWords(count);
+    StorageService.saveSettings({ maxConcurrentWords: count });
+  };
+
   const handleLanguageChange = (newLang: Language) => {
     const stageList = newLang === 'th' ? THAI_STAGES : ENGLISH_STAGES;
     initStage(stageList[0], undefined, false);
@@ -694,6 +751,8 @@ export function App() {
         guiLang={guiLang}
         onToggleGuiLang={() => setGuiLang(guiLang === 'th' ? 'en' : 'th')}
         onOpenModal={(modalName) => setActivePortalModal(modalName)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
 
       {/* 2. Main Body Container with Left & Right Affiliate Slots and Center Game */}
@@ -729,8 +788,11 @@ export function App() {
             onTogglePause={() => setIsPaused((prev) => !prev)}
             onOpenStageSelect={() => setIsStageSelectOpen(true)}
             onOpenCustomWords={() => setIsCustomWordsOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             onRestartStage={() => initStage(currentStage, undefined, false)}
-            targetCount={currentStage.targetCount}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            targetCount={effectiveTargetCount}
             wordsCompleted={wordsCompleted}
             guiLang={guiLang}
           />
@@ -803,6 +865,27 @@ export function App() {
         onClose={() => setIsCustomWordsOpen(false)}
         onStartCustomStage={(stage) => initStage(stage, undefined, false)}
         currentLanguage={language}
+        guiLang={guiLang}
+      />
+
+      <GameSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        targetWordsCount={targetWordsCount}
+        onChangeTargetWordsCount={handleTargetWordsCountChange}
+        maxConcurrentWords={maxConcurrentWords}
+        onChangeMaxConcurrentWords={handleMaxConcurrentWordsChange}
+        speedMultiplier={speedMultiplier}
+        onChangeSpeed={handleSpeedChange}
+        isSfxMuted={isSfxMuted}
+        onToggleSfx={handleToggleSfx}
+        isVoiceMuted={isVoiceMuted}
+        onToggleVoice={handleToggleVoice}
+        isBgmMuted={isBgmMuted}
+        onToggleBgm={handleToggleBgm}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        guiLang={guiLang}
       />
 
       <GameOverModal

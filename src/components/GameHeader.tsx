@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Flame, Volume2, VolumeX, Mic, MicOff, Music, Gauge, Sparkles, Pause, Play, RefreshCw } from 'lucide-react';
+import { Heart, Flame, Volume2, VolumeX, Mic, MicOff, Music, Gauge, Sparkles, Pause, Play, RefreshCw, Settings, Maximize, Minimize } from 'lucide-react';
 import { Language, Stage } from '../types/game';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
 
@@ -24,7 +24,10 @@ interface GameHeaderProps {
   onTogglePause: () => void;
   onOpenStageSelect: () => void;
   onOpenCustomWords: () => void;
+  onOpenSettings: () => void;
   onRestartStage: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
   targetCount: number;
   wordsCompleted: number;
   guiLang: GuiLanguage;
@@ -53,7 +56,10 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   onTogglePause,
   onOpenStageSelect,
   onOpenCustomWords,
+  onOpenSettings,
   onRestartStage,
+  isFullscreen,
+  onToggleFullscreen,
   targetCount,
   wordsCompleted,
   guiLang,
@@ -80,7 +86,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
               </div>
               <button
                 onClick={onOpenStageSelect}
-                className="flex items-center gap-1.5 text-xs text-amber-300 hover:text-amber-200 transition group"
+                className="flex items-center gap-1.5 text-xs text-amber-300 hover:text-amber-200 transition group cursor-pointer"
               >
                 <span className="text-slate-400 group-hover:text-white">({wordsCompleted}/{targetCount})</span>
                 <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 group-hover:border-amber-400/50">
@@ -149,7 +155,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           {/* Language Switch */}
           <button
             onClick={() => onLanguageChange(language === 'th' ? 'en' : 'th')}
-            className="flex items-center gap-1 px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 rounded-lg text-xs font-semibold transition"
+            className="flex items-center gap-1 px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 rounded-lg text-xs font-semibold transition cursor-pointer"
             title="สลับภาษาโจทย์ ไทย / English"
           >
             <span>{language === 'th' ? '🇹🇭 TH' : '🇬🇧 EN'}</span>
@@ -158,17 +164,39 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           {/* Custom Words Modal Button */}
           <button
             onClick={onOpenCustomWords}
-            className="flex items-center gap-1 px-2.5 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 rounded-lg text-xs font-semibold transition"
+            className="flex items-center gap-1 px-2.5 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 rounded-lg text-xs font-semibold transition cursor-pointer"
             title={t.customWords}
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-300" />
             <span className="hidden md:inline">{t.customWords}</span>
           </button>
 
+          {/* Game Settings Modal Button */}
+          <button
+            onClick={onOpenSettings}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg transition cursor-pointer"
+            title={t.settingsTitle}
+          >
+            <Settings className="w-3.5 h-3.5 text-cyan-400" />
+          </button>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={onToggleFullscreen}
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              isFullscreen
+                ? 'bg-indigo-600/40 border-indigo-500 text-amber-300'
+                : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+            }`}
+            title={isFullscreen ? t.fullscreenOff : t.fullscreenOn}
+          >
+            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          </button>
+
           {/* Background Music Toggle */}
           <button
             onClick={onToggleBgm}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
               !isBgmMuted
                 ? 'bg-pink-600/30 border-pink-500/40 text-pink-300 animate-pulse'
                 : 'bg-slate-800 border-slate-700 text-slate-500'
@@ -181,7 +209,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           {/* Sound FX Toggle */}
           <button
             onClick={onToggleSfx}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
               !isSfxMuted
                 ? 'bg-blue-600/30 border-blue-500/40 text-blue-300'
                 : 'bg-slate-800 border-slate-700 text-slate-500'
@@ -194,7 +222,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           {/* Voice Pronunciation Toggle */}
           <button
             onClick={onToggleVoice}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
               !isVoiceMuted
                 ? 'bg-amber-600/30 border-amber-500/40 text-amber-300'
                 : 'bg-slate-800 border-slate-700 text-slate-500'
@@ -207,7 +235,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           {/* Restart Stage Button */}
           <button
             onClick={onRestartStage}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition"
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg transition cursor-pointer"
             title={t.restartStage}
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -216,7 +244,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           {/* Pause / Play Button */}
           <button
             onClick={onTogglePause}
-            className={`p-1.5 rounded-lg border transition ${
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
               isPaused
                 ? 'bg-emerald-600/40 border-emerald-500 text-emerald-200 animate-pulse'
                 : 'bg-slate-800 border-slate-700 text-slate-300'

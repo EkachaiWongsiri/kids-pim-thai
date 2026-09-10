@@ -24,7 +24,11 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
   guiLang,
 }) => {
   const [showFingerGuide, setShowFingerGuide] = useState(true);
+  const [isVirtualShiftActive, setIsVirtualShiftActive] = useState(false);
   const t = TRANSLATIONS[guiLang];
+
+  const isPhysicalShiftActive = activePhysicalKey === 'ShiftLeft' || activePhysicalKey === 'ShiftRight';
+  const isShiftActive = isVirtualShiftActive || isPhysicalShiftActive;
 
   // Find which key is targeted
   const targetKeyData = targetChar ? findKeyForChar(targetChar, language) : null;
@@ -33,6 +37,16 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
 
   const renderKeyContent = (key: KeyInfo) => {
     if (key.isSpecial) {
+      if (key.code === 'ShiftLeft' || key.code === 'ShiftRight') {
+        return (
+          <span className={`text-xs md:text-sm font-black tracking-wider flex items-center gap-1 ${
+            isShiftActive ? 'text-white' : ''
+          }`}>
+            <span>⬆</span>
+            <span>{isShiftActive ? 'SHIFT' : (language === 'th' ? key.labelTh : key.labelEn)}</span>
+          </span>
+        );
+      }
       return (
         <span className="text-xs md:text-sm font-semibold tracking-wider">
           {language === 'th' ? key.labelTh : key.labelEn}
@@ -46,6 +60,23 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
     const mainChar = isThai ? key.labelTh : key.labelEn;
     const shiftChar = isThai ? key.shiftTh : key.shiftEn;
 
+    if (isShiftActive) {
+      // In shift mode: Show shiftChar prominently, mainChar small
+      return (
+        <div className="flex flex-col items-center justify-between h-full py-0.5 pointer-events-none">
+          <span className={`text-sm md:text-lg font-black leading-none ${
+            isTarget ? 'text-amber-300 scale-125' : 'text-white'
+          }`}>
+            {shiftChar}
+          </span>
+          <span className="text-[10px] md:text-xs leading-none text-slate-500 font-normal">
+            {mainChar}
+          </span>
+        </div>
+      );
+    }
+
+    // Normal non-shift mode
     return (
       <div className="flex flex-col items-center justify-between h-full py-0.5 pointer-events-none">
         {/* Shift character (top) */}
@@ -89,6 +120,11 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
             <KeyboardIcon className="w-3.5 h-3.5 text-amber-400" />
             <span>{t.virtualKeyboardTitle} ({language === 'th' ? 'เกษมณี TH' : 'QWERTY EN'})</span>
           </div>
+          {isShiftActive && (
+            <span className="px-2 py-0.5 bg-rose-500/30 border border-rose-500/60 rounded-full text-rose-300 font-bold text-[10px] animate-pulse">
+              ⬆ SHIFT ACTIVE
+            </span>
+          )}
           {targetChar && (
             <div className="hidden sm:flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 rounded-full text-amber-300 text-[11px]">
               <span>{t.nextKey}</span>
@@ -139,13 +175,14 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
           <div key={rowIndex} className="flex justify-center gap-1 md:gap-1.5 w-full">
             {row.map((key) => {
               const isTarget = targetKeyCode === key.code;
-              const isTargetShift = requiresShift && (key.code === 'ShiftLeft' || key.code === 'ShiftRight');
+              const isShiftKey = key.code === 'ShiftLeft' || key.code === 'ShiftRight';
+              const isTargetShift = requiresShift && isShiftKey;
               const isPhysicallyPressed = activePhysicalKey === key.code;
               const fingerStyle = FINGER_COLORS[key.finger];
 
               let keyClass = `
                 relative flex items-center justify-center rounded-lg font-medium select-none
-                transition-all duration-75 text-center
+                transition-all duration-75 text-center cursor-pointer active:scale-95
                 h-9 md:h-11 text-xs md:text-sm
                 ${key.width || 'flex-1 min-w-[24px] md:min-w-[38px] max-w-[54px]'}
                 ${key.code === 'Space' ? 'max-w-md w-full' : ''}
@@ -154,6 +191,8 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
               // Dynamic styling based on state
               if (isPhysicallyPressed) {
                 keyClass += ' bg-amber-400 text-slate-950 scale-95 shadow-inner ring-2 ring-amber-300';
+              } else if (isShiftKey && isShiftActive) {
+                keyClass += ' bg-gradient-to-r from-rose-600 to-pink-600 text-white font-black shadow-lg shadow-rose-500/50 ring-2 ring-rose-300 scale-105';
               } else if (isTargetShift) {
                 keyClass += ' bg-rose-600 text-white font-bold animate-pulse ring-2 ring-rose-400 shadow-lg shadow-rose-500/50 scale-105';
               } else if (isTarget) {
@@ -169,9 +208,40 @@ export const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({
                   key={key.code}
                   type="button"
                   onClick={() => {
+                    if (isShiftKey) {
+                      // Toggle virtual shift on touchscreen/click
+                      setIsVirtualShiftActive((prev) => !prev);
+                      return;
+                    }
+
+                    if (key.code === 'Backspace') {
+                      return;
+                    }
+
+                    if (key.code === 'Space') {
+                      onKeyClick?.(' ');
+                      if (isVirtualShiftActive) setIsVirtualShiftActive(false);
+                      return;
+                    }
+
                     if (onKeyClick) {
-                      const char = language === 'th' ? key.labelTh : key.labelEn;
-                      onKeyClick(char);
+                      const isThai = language === 'th';
+                      let charToSend: string;
+
+                      if (isShiftActive) {
+                        charToSend = isThai
+                          ? (key.shiftTh || key.labelTh)
+                          : (key.shiftEn || key.labelEn.toUpperCase());
+                      } else {
+                        charToSend = isThai ? key.labelTh : key.labelEn;
+                      }
+
+                      onKeyClick(charToSend);
+
+                      // If virtual shift was active, unlatch after tapping a key
+                      if (isVirtualShiftActive) {
+                        setIsVirtualShiftActive(false);
+                      }
                     }
                   }}
                   className={keyClass}

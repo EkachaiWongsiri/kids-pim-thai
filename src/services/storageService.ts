@@ -5,6 +5,8 @@ export interface SavedSettings {
   keyboardVisible: boolean;
   speedMultiplier: number;
   lastPlayedStageId: number;
+  targetWordsCount: number;
+  maxConcurrentWords: number;
 }
 
 export interface StageScore {
@@ -31,6 +33,8 @@ const DEFAULT_SETTINGS: SavedSettings = {
   keyboardVisible: true,
   speedMultiplier: 0.8,
   lastPlayedStageId: 1,
+  targetWordsCount: 10,
+  maxConcurrentWords: 4,
 };
 
 export class StorageService {

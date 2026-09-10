@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { CUSTOM_PRESETS } from '../data/stagesData';
 import { Language, Stage } from '../types/game';
 import { StorageService } from '../services/storageService';
-import { X, Sparkles, Plus, Trash2, Play } from 'lucide-react';
+import { X, Sparkles, Plus, Trash2, Play, HelpCircle, ArrowRight, AlertTriangle } from 'lucide-react';
+import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
 
 interface CustomWordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartCustomStage: (stage: Stage) => void;
   currentLanguage: Language;
+  guiLang: GuiLanguage;
 }
 
 export const CustomWordModal: React.FC<CustomWordModalProps> = ({
@@ -16,10 +18,15 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
   onClose,
   onStartCustomStage,
   currentLanguage,
+  guiLang,
 }) => {
   const [inputText, setInputText] = useState('');
   const [wordsList, setWordsList] = useState<string[]>([]);
   const [selectedLang, setSelectedLang] = useState<Language>(currentLanguage);
+  const [showHelp, setShowHelp] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const t = TRANSLATIONS[guiLang];
 
   useEffect(() => {
     const saved = StorageService.getCustomWords();
@@ -31,10 +38,41 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
     }
   }, []);
 
+  // Sync selected language when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedLang(currentLanguage);
+      setValidationError(null);
+    }
+  }, [isOpen, currentLanguage]);
+
   if (!isOpen) return null;
+
+  // Real-time language mismatch detection
+  const hasThaiLetters = /[\u0E00-\u0E7F]/.test(inputText);
+  const hasEnglishLetters = /[a-zA-Z]/.test(inputText);
+  const isThaiModeWithEnglish = selectedLang === 'th' && hasEnglishLetters;
+  const isEnglishModeWithThai = selectedLang === 'en' && hasThaiLetters;
+  const hasLanguageMismatch = isThaiModeWithEnglish || isEnglishModeWithThai;
+
+  const handleSwitchLanguage = () => {
+    const newLang = selectedLang === 'th' ? 'en' : 'th';
+    setSelectedLang(newLang);
+    setValidationError(null);
+  };
 
   const handleAddWords = () => {
     if (!inputText.trim()) return;
+
+    // Check language validity
+    if (selectedLang === 'th' && hasEnglishLetters) {
+      setValidationError(t.langMismatchWarningTh);
+      return;
+    }
+    if (selectedLang === 'en' && hasThaiLetters) {
+      setValidationError(t.langMismatchWarningEn);
+      return;
+    }
 
     // Split by comma, newline, or space
     const newWords = inputText
@@ -42,10 +80,26 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
       .map((w) => w.trim())
       .filter((w) => w.length > 0);
 
-    const updated = Array.from(new Set([...wordsList, ...newWords]));
+    // Filter to ensure only compatible words are added
+    const validWords = newWords.filter((w) => {
+      if (selectedLang === 'th') return !/[a-zA-Z]/.test(w);
+      return !/[\u0E00-\u0E7F]/.test(w);
+    });
+
+    if (validWords.length === 0) {
+      setValidationError(
+        selectedLang === 'th'
+          ? 'กรุณากรอกคำศัพท์ภาษาไทยที่ถูกต้อง'
+          : 'Please enter valid English vocabulary'
+      );
+      return;
+    }
+
+    const updated = Array.from(new Set([...wordsList, ...validWords]));
     setWordsList(updated);
     StorageService.saveCustomWords(updated);
     setInputText('');
+    setValidationError(null);
   };
 
   const handleRemoveWord = (wordToRemove: string) => {
@@ -61,8 +115,9 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
 
   const handleLoadPreset = (presetWords: string[], lang: Language) => {
     setWordsList(presetWords);
-    setSelectedLang(lang);
+    setSelectedLang(lang); // Automatically switch language to match preset!
     StorageService.saveCustomWords(presetWords);
+    setValidationError(null);
   };
 
   const handleStartGame = () => {
@@ -70,9 +125,9 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
 
     const customStage: Stage = {
       id: 999,
-      title: 'ด่านพิเศษ: คลังคำศัพท์ของคุณ',
-      subtitle: `โจทย์พิเศษจำนวน ${wordsList.length} คำ`,
-      description: 'ฝึกพิมพ์คำศัพท์ที่คุณหรือคุณครูกำหนดเอง',
+      title: guiLang === 'th' ? 'ด่านพิเศษ: คลังคำศัพท์ของคุณ' : 'Custom Stage: Your Words',
+      subtitle: guiLang === 'th' ? `โจทย์พิเศษจำนวน ${wordsList.length} คำ` : `Special set with ${wordsList.length} words`,
+      description: guiLang === 'th' ? 'ฝึกพิมพ์คำศัพท์ที่คุณหรือคุณครูกำหนดเอง' : 'Practice your customized vocabulary list',
       language: selectedLang,
       category: 'custom',
       words: wordsList,
@@ -86,25 +141,42 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-950/80 backdrop-blur-md animate-fadeIn select-none">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
           <div className="flex items-center gap-3">
             <span className="text-3xl">✏️</span>
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                กำหนดโจทย์คำศัพท์เอง (Custom Words)
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white">
+                  {guiLang === 'th' ? 'กำหนดโจทย์คำศัพท์เอง' : 'Custom Word Bank'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowHelp(!showHelp)}
+                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                    showHelp
+                      ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30'
+                      : 'bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/50 border border-indigo-400/40'
+                  }`}
+                  title={t.customWordHelp}
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>{showHelp ? (guiLang === 'th' ? 'ซ่อนคู่มือ' : 'Hide Guide') : (guiLang === 'th' ? 'วิธีใช้ ?' : 'Help ?')}</span>
+                </button>
+              </div>
               <p className="text-xs text-slate-400">
-                คุณครูหรือผู้ปกครองสามารถพิมพ์คำศัพท์ที่ต้องการให้เด็กๆ ฝึกพิมพ์เป็นพิเศษได้ที่นี่
+                {guiLang === 'th'
+                  ? 'คุณครูหรือผู้ปกครองสามารถพิมพ์คำศัพท์ที่ต้องการให้น้องๆ ฝึกพิมพ์เป็นพิเศษได้ที่นี่'
+                  : 'Parents and teachers can create custom vocabulary lists for targeted typing practice.'}
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition"
+            className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -112,56 +184,158 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
 
         {/* Body Content */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
+          {/* Collapsible Tutorial Card for Beginners */}
+          {showHelp && (
+            <div className="bg-gradient-to-br from-indigo-950/80 via-slate-900 to-indigo-950/60 border-2 border-indigo-500/50 rounded-2xl p-4 shadow-xl space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                  <span>💡</span>
+                  <span>{t.customWordHelp}</span>
+                </h3>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="text-xs text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
+                  <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-[11px] font-black">1</span>
+                    <span>{t.customWordHelpStep1Title}</span>
+                  </div>
+                  <p className="text-slate-400 text-[11px]">{t.customWordHelpStep1Desc}</p>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
+                  <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-[11px] font-black">2</span>
+                    <span>{t.customWordHelpStep2Title}</span>
+                  </div>
+                  <p className="text-slate-400 text-[11px]">{t.customWordHelpStep2Desc}</p>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
+                  <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-[11px] font-black">3</span>
+                    <span>{t.customWordHelpStep3Title}</span>
+                  </div>
+                  <p className="text-slate-400 text-[11px]">{t.customWordHelpStep3Desc}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Quick Presets */}
           <div>
             <span className="text-xs font-semibold text-slate-300 mb-2 block">
-              💡 เลือกหมวดหมู่คำศัพท์แนะนำแบบด่วน:
+              {guiLang === 'th' ? '💡 เลือกหมวดหมู่คำศัพท์แนะนำแบบด่วน (สลับภาษาให้อัตโนมัติ):' : '💡 Quick Recommended Presets (Auto-switches language):'}
             </span>
             <div className="flex flex-wrap gap-2">
               {CUSTOM_PRESETS.map((preset, idx) => (
                 <button
                   key={idx}
+                  type="button"
                   onClick={() => handleLoadPreset(preset.words, preset.lang)}
-                  className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 rounded-xl transition flex items-center gap-1.5 hover:border-indigo-400"
+                  className={`text-xs px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer border ${
+                    selectedLang === preset.lang
+                      ? 'bg-slate-800 text-indigo-300 border-indigo-500/50 hover:bg-slate-700'
+                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-slate-200'
+                  }`}
                 >
                   <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>{preset.name}</span>
+                  <span className="font-medium">{preset.name}</span>
+                  <span className="text-[10px] px-1 py-0.2 rounded bg-slate-950/80 text-slate-400">
+                    {preset.lang === 'th' ? '🇹🇭' : '🇬🇧'}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Input Box */}
+          {/* Input Box with Smart Language Indicator & Toggle */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-300">
-                พิมพ์คำศัพท์ใหม่ (คั่นด้วยช่องว่าง, จุลภาค หรือขึ้นบรรทัดใหม่):
+                {guiLang === 'th'
+                  ? 'พิมพ์คำศัพท์ใหม่ (คั่นด้วยช่องว่าง, จุลภาค หรือขึ้นบรรทัดใหม่):'
+                  : 'Enter new words (separated by spaces, commas, or newlines):'}
               </label>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-400">ภาษาของคำ:</span>
+                <span className="text-slate-400">{guiLang === 'th' ? 'ภาษาของโจทย์:' : 'Word Language:'}</span>
                 <button
-                  onClick={() => setSelectedLang(selectedLang === 'th' ? 'en' : 'th')}
-                  className="px-2 py-0.5 bg-indigo-900/60 text-indigo-200 border border-indigo-500/40 rounded font-bold"
+                  type="button"
+                  onClick={handleSwitchLanguage}
+                  className={`px-3 py-1 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                    hasLanguageMismatch
+                      ? 'bg-rose-600 text-white border-rose-400 ring-4 ring-rose-500/50 shadow-lg shadow-rose-500/50 animate-pulse'
+                      : 'bg-indigo-900/80 hover:bg-indigo-800 text-indigo-200 border-indigo-500/40'
+                  }`}
+                  title="คลิกเพื่อสลับภาษาคำศัพท์"
                 >
-                  {selectedLang === 'th' ? '🇹🇭 ไทย' : '🇬🇧 English'}
+                  <span>{selectedLang === 'th' ? '🇹🇭 ภาษาไทย' : '🇬🇧 English'}</span>
+                  <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
             </div>
 
+            {/* Language Mismatch Warning Banner */}
+            {hasLanguageMismatch && (
+              <div className="bg-rose-950/80 border-2 border-rose-500/80 text-rose-200 p-3 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs animate-shake shadow-lg shadow-rose-950/50">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 animate-bounce" />
+                  <span className="font-medium">
+                    {selectedLang === 'th' ? t.langMismatchWarningTh : t.langMismatchWarningEn}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSwitchLanguage}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl transition cursor-pointer shrink-0 shadow-md"
+                >
+                  {t.btnAutoSwitchLang}
+                </button>
+              </div>
+            )}
+
+            {/* Validation Error Banner */}
+            {validationError && !hasLanguageMismatch && (
+              <div className="bg-amber-950/80 border border-amber-500/60 text-amber-200 p-2.5 rounded-xl flex items-center gap-2 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{validationError}</span>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <textarea
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="เช่น แมว สุนัข โรงเรียน ดินสอ ยางลบ หรือ dog cat sun moon..."
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  if (validationError) setValidationError(null);
+                }}
+                placeholder={
+                  selectedLang === 'th'
+                    ? 'เช่น แมว สุนัข โรงเรียน ดินสอ ยางลบ รักพ่อแม่ คนเก่ง...'
+                    : 'e.g. cat dog apple star moon school pencil smile...'
+                }
                 rows={3}
-                className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className={`flex-1 bg-slate-950 border rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none transition ${
+                  hasLanguageMismatch
+                    ? 'border-rose-500 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
+                    : 'border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500'
+                }`}
               />
               <button
+                type="button"
                 onClick={handleAddWords}
-                className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl flex flex-col items-center justify-center gap-1 transition shadow-lg shadow-indigo-600/30"
+                disabled={hasLanguageMismatch || !inputText.trim()}
+                className={`px-4 font-bold rounded-xl flex flex-col items-center justify-center gap-1 transition shadow-lg cursor-pointer ${
+                  hasLanguageMismatch || !inputText.trim()
+                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
+                }`}
               >
                 <Plus className="w-5 h-5" />
-                <span className="text-xs">เพิ่มคำ</span>
+                <span className="text-xs">{guiLang === 'th' ? 'เพิ่มคำ' : 'Add Words'}</span>
               </button>
             </div>
           </div>
@@ -169,26 +343,35 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
           {/* Current Word List Chips */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-slate-300">
-                คำศัพท์ที่จะตกลงมาในเกม ({wordsList.length} คำ):
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>{guiLang === 'th' ? 'คำศัพท์ที่จะตกลงมาในเกม:' : 'Words in this custom stage:'}</span>
+                <span className="font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/30">
+                  {wordsList.length} {t.wordsCountUnit}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  ({selectedLang === 'th' ? '🇹🇭 ภาษาไทย' : '🇬🇧 English'})
+                </span>
               </span>
               {wordsList.length > 0 && (
                 <button
+                  type="button"
                   onClick={handleClearAll}
-                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>ล้างทั้งหมด</span>
+                  <span>{guiLang === 'th' ? 'ล้างทั้งหมด' : 'Clear All'}</span>
                 </button>
               )}
             </div>
 
             {wordsList.length === 0 ? (
               <div className="p-8 text-center border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 text-xs">
-                ยังไม่มีคำศัพท์ กรุณาพิมพ์คำศัพท์ด้านบน หรือเลือกจากหมวดแนะนำ
+                {guiLang === 'th'
+                  ? 'ยังไม่มีคำศัพท์ กรุณาพิมพ์คำศัพท์ด้านบน หรือเลือกจากหมวดแนะนำ'
+                  : 'No custom words added yet. Type words above or choose a preset.'}
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-3 bg-slate-950/60 rounded-2xl border border-slate-800">
+              <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto p-3 bg-slate-950/60 rounded-2xl border border-slate-800">
                 {wordsList.map((word, idx) => (
                   <span
                     key={idx}
@@ -196,8 +379,9 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
                   >
                     <span>{word}</span>
                     <button
+                      type="button"
                       onClick={() => handleRemoveWord(word)}
-                      className="text-slate-400 hover:text-rose-400 transition"
+                      className="text-slate-400 hover:text-rose-400 transition cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -211,23 +395,25 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition cursor-pointer"
           >
-            ยกเลิก
+            {guiLang === 'th' ? 'ยกเลิก' : 'Cancel'}
           </button>
 
           <button
+            type="button"
             onClick={handleStartGame}
             disabled={wordsList.length === 0}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm shadow-xl transition transform ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm shadow-xl transition transform cursor-pointer ${
               wordsList.length > 0
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 hover:scale-105 active:scale-95'
                 : 'bg-slate-800 text-slate-600 cursor-not-allowed'
             }`}
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>เริ่มเล่นด้วยคำศัพท์เหล่านี้</span>
+            <span>{guiLang === 'th' ? 'เริ่มเล่นด้วยคำศัพท์เหล่านี้' : 'Play with these words'}</span>
           </button>
         </div>
       </div>

@@ -84,6 +84,33 @@ export const TRANSLATIONS = {
     sponsorSample2: '⌨️ แนะนำ: คีย์บอร์ดปุ่มนุ่มขนาดพอดีมือสำหรับเด็กวัยเรียน',
     sponsorContact: 'สนใจสนับสนุนพื้นที่ติดต่อ support@mxiaapp.com',
 
+    // Settings & Controls
+    settingsTitle: 'ตั้งค่าเกม',
+    settingsDesc: 'ปรับแต่งความเร็ว จำนวนคำ และระบบเสียงตามความเหมาะสม',
+    wordsPerStage: 'จำนวนคำเป้าหมายต่อด่าน',
+    concurrentWords: 'จำนวนคำที่ตกลงมาพร้อมกัน',
+    fullscreen: 'โหมดเต็มจอ',
+    fullscreenOn: 'เปิดเต็มจอ',
+    fullscreenOff: 'ออกจากเต็มจอ',
+    wordsCountUnit: 'คำ',
+    concurrentUnit: 'คำบนจอ',
+    densityFocus: '⚡ โฟกัสทีละคำ (เหมาะกับเด็กเล็ก)',
+    densityNormal: '⭐ ปกติ',
+    densityChallenge: '🔥 ท้าทาย',
+    resetDefault: 'คืนค่าเริ่มต้น',
+
+    // Custom Word Modal Help & Validation
+    customWordHelp: 'คำแนะนำการใช้งาน',
+    customWordHelpStep1Title: '1. เลือกภาษาที่ต้องการฝึก',
+    customWordHelpStep1Desc: 'กดปุ่มเลือกโหมดภาษาไทย 🇹🇭 หรือ ภาษาอังกฤษ 🇬🇧 ให้ตรงกับคำศัพท์',
+    customWordHelpStep2Title: '2. พิมพ์คำศัพท์หรือเลือกหมวดแนะนำ',
+    customWordHelpStep2Desc: 'พิมพ์คำศัพท์ที่ต้องการฝึกทีละคำ หรือคลิกเลือกชุดคำศัพท์สำเร็จรูปด้านล่าง',
+    customWordHelpStep3Title: '3. กดปุ่มเริ่มเล่น',
+    customWordHelpStep3Desc: 'เมื่อใส่คำศัพท์ครบแล้ว กดปุ่ม "เริ่มเล่นด้วยคำศัพท์เหล่านี้" ได้ทันที',
+    langMismatchWarningTh: '⚠️ ตรวจพบตัวอักษรภาษาอังกฤษในโหมดภาษาไทย! กรุณากดปุ่มสลับภาษาด้านขวา หรือแก้ไขคำศัพท์',
+    langMismatchWarningEn: '⚠️ ตรวจพบตัวอักษรภาษาไทยในโหมดภาษาอังกฤษ! กรุณากดปุ่มสลับภาษาด้านขวา หรือแก้ไขคำศัพท์',
+    btnAutoSwitchLang: '🔄 สลับเป็นโหมดภาษานี้ทันที',
+
     // Dialogs
     gameOverTitle: 'พลังชีวิตหมดแล้ว!',
     gameOverEncourage: 'ไม่เป็นไรนะคนเก่ง! การฝึกพิมพ์ต้องใช้เวลา ลองใหม่อีกรอบกันเถอะ ✨',
@@ -182,6 +209,33 @@ export const TRANSLATIONS = {
     sponsorSample1: '📚 Recommended: Kids Thai & English Storybooks & Activity Workbooks',
     sponsorSample2: '⌨️ Recommended: Ergonomic Kid-friendly Touch-Typing Keyboards',
     sponsorContact: 'For sponsorship inquiries, contact support@mxiaapp.com',
+
+    // Settings & Controls
+    settingsTitle: 'Game Settings',
+    settingsDesc: 'Customize falling speed, word count, and audio volume.',
+    wordsPerStage: 'Words per Stage Goal',
+    concurrentWords: 'Concurrent Falling Words',
+    fullscreen: 'Fullscreen Mode',
+    fullscreenOn: 'Go Fullscreen',
+    fullscreenOff: 'Exit Fullscreen',
+    wordsCountUnit: 'words',
+    concurrentUnit: 'words on screen',
+    densityFocus: '⚡ Focus 1 by 1 (For Beginners)',
+    densityNormal: '⭐ Normal',
+    densityChallenge: '🔥 Challenge',
+    resetDefault: 'Reset Defaults',
+
+    // Custom Word Modal Help & Validation
+    customWordHelp: 'How to Use Custom Word Bank',
+    customWordHelpStep1Title: '1. Select Language',
+    customWordHelpStep1Desc: 'Switch between Thai 🇹🇭 or English 🇬🇧 mode to match your words.',
+    customWordHelpStep2Title: '2. Enter Custom Words or Presets',
+    customWordHelpStep2Desc: 'Type your custom vocabulary or choose from quick preset categories below.',
+    customWordHelpStep3Title: '3. Start Playing',
+    customWordHelpStep3Desc: 'Click "Start with these words" to begin customized typing practice!',
+    langMismatchWarningTh: '⚠️ English characters detected in Thai mode! Please switch language or fix text.',
+    langMismatchWarningEn: '⚠️ Thai characters detected in English mode! Please switch language or fix text.',
+    btnAutoSwitchLang: '🔄 Switch Language Now',
 
     // Dialogs
     gameOverTitle: 'Out of Hearts!',
