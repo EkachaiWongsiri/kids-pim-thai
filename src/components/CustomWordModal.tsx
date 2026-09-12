@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CUSTOM_PRESETS } from '../data/stagesData';
 import { Language, Stage } from '../types/game';
-import { StorageService } from '../services/storageService';
-import { X, Sparkles, Plus, Trash2, Play, HelpCircle, ArrowRight, AlertTriangle } from 'lucide-react';
+import { StorageService, WordSet } from '../services/storageService';
+import { X, Sparkles, Plus, Trash2, Play, HelpCircle, ArrowRight, AlertTriangle, Bookmark, FolderPlus, Download } from 'lucide-react';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
+import { ExportImportModal } from './ExportImportModal';
 
 interface CustomWordModalProps {
   isOpen: boolean;
@@ -26,16 +27,26 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
   const [showHelp, setShowHelp] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Multi-Preset Word Sets state
+  const [savedWordSets, setSavedWordSets] = useState<WordSet[]>([]);
+  const [isSaveSetModalOpen, setIsSaveSetModalOpen] = useState(false);
+  const [newSetName, setNewSetName] = useState('');
+  const [isExportImportOpen, setIsExportImportOpen] = useState(false);
+
   const t = TRANSLATIONS[guiLang];
 
-  useEffect(() => {
+  const reloadData = () => {
     const saved = StorageService.getCustomWords();
     if (saved && saved.length > 0) {
       setWordsList(saved);
     } else {
-      // Default initial custom words
       setWordsList(['แมว', 'หมา', 'ช้าง', 'รักพ่อแม่', 'คนเก่ง', 'ตั้งใจเรียน']);
     }
+    setSavedWordSets(StorageService.getSavedWordSets());
+  };
+
+  useEffect(() => {
+    reloadData();
   }, []);
 
   // Sync selected language when modal opens
@@ -43,6 +54,7 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
     if (isOpen) {
       setSelectedLang(currentLanguage);
       setValidationError(null);
+      reloadData();
     }
   }, [isOpen, currentLanguage]);
 
@@ -120,6 +132,33 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
     setValidationError(null);
   };
 
+  const handleLoadSavedSet = (set: WordSet) => {
+    setWordsList(set.words);
+    setSelectedLang(set.language);
+    StorageService.saveCustomWords(set.words);
+    setValidationError(null);
+  };
+
+  const handleSaveCurrentAsNewSet = () => {
+    if (!newSetName.trim() || wordsList.length === 0) return;
+
+    StorageService.saveWordSet({
+      name: newSetName.trim(),
+      language: selectedLang,
+      words: [...wordsList],
+    });
+
+    setSavedWordSets(StorageService.getSavedWordSets());
+    setNewSetName('');
+    setIsSaveSetModalOpen(false);
+  };
+
+  const handleDeleteSavedSet = (setId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    StorageService.deleteWordSet(setId);
+    setSavedWordSets(StorageService.getSavedWordSets());
+  };
+
   const handleStartGame = () => {
     if (wordsList.length === 0) return;
 
@@ -133,7 +172,7 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
       words: wordsList,
       targetCount: Math.min(wordsList.length * 2, 20),
       speedBase: 0.8,
-      icon: '✨'
+      icon: '✨',
     };
 
     onStartCustomStage(customStage);
@@ -142,7 +181,7 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-950/80 backdrop-blur-md animate-fadeIn select-none">
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
           <div className="flex items-center gap-3">
@@ -174,17 +213,29 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsExportImportOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 rounded-xl text-xs font-bold transition cursor-pointer"
+              title={t.exportImportTitle}
+            >
+              <Download className="w-3.5 h-3.5 text-purple-300" />
+              <span className="hidden sm:inline">{guiLang === 'th' ? 'ส่งออก/นำเข้า JSON' : 'Export/Import JSON'}</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body Content */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
-          {/* Collapsible Tutorial Card for Beginners */}
+          {/* Collapsible Tutorial Card */}
           {showHelp && (
             <div className="bg-gradient-to-br from-indigo-950/80 via-slate-900 to-indigo-950/60 border-2 border-indigo-500/50 rounded-2xl p-4 shadow-xl space-y-3 animate-fadeIn">
               <div className="flex items-center justify-between">
@@ -194,7 +245,7 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
                 </h3>
                 <button
                   onClick={() => setShowHelp(false)}
-                  className="text-xs text-slate-400 hover:text-white"
+                  className="text-xs text-slate-400 hover:text-white cursor-pointer"
                 >
                   ✕
                 </button>
@@ -225,10 +276,65 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
             </div>
           )}
 
-          {/* Quick Presets */}
+          {/* Saved Word Sets (Multi-Preset Bank) */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t.savedWordSetsTitle} ({savedWordSets.length}):</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsSaveSetModalOpen(true)}
+                disabled={wordsList.length === 0}
+                className={`flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  wordsList.length > 0
+                    ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                    : 'bg-slate-800 text-slate-600 border border-slate-700 cursor-not-allowed'
+                }`}
+              >
+                <FolderPlus className="w-3.5 h-3.5" />
+                <span>{t.btnSaveCurrentAsSet}</span>
+              </button>
+            </div>
+
+            {savedWordSets.length === 0 ? (
+              <p className="text-[11px] text-slate-500 italic">
+                {t.noSavedSetsYet}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+                {savedWordSets.map((set) => (
+                  <div
+                    key={set.id}
+                    onClick={() => handleLoadSavedSet(set)}
+                    className="group px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400/50 rounded-xl transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300">
+                      {set.name}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-950 text-slate-400">
+                      {set.words.length} คำ ({set.language === 'th' ? '🇹🇭' : '🇬🇧'})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteSavedSet(set.id, e)}
+                      className="text-slate-500 hover:text-rose-400 transition"
+                      title={t.deleteSetConfirm}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Built-in Presets */}
           <div>
             <span className="text-xs font-semibold text-slate-300 mb-2 block">
-              {guiLang === 'th' ? '💡 เลือกหมวดหมู่คำศัพท์แนะนำแบบด่วน (สลับภาษาให้อัตโนมัติ):' : '💡 Quick Recommended Presets (Auto-switches language):'}
+              {guiLang === 'th' ? '💡 หรือเลือกหมวดหมู่คำศัพท์แนะนำแบบด่วน:' : '💡 Or choose from built-in presets:'}
             </span>
             <div className="flex flex-wrap gap-2">
               {CUSTOM_PRESETS.map((preset, idx) => (
@@ -371,7 +477,7 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
                   : 'No custom words added yet. Type words above or choose a preset.'}
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto p-3 bg-slate-950/60 rounded-2xl border border-slate-800">
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-3 bg-slate-950/60 rounded-2xl border border-slate-800">
                 {wordsList.map((word, idx) => (
                   <span
                     key={idx}
@@ -417,6 +523,66 @@ export const CustomWordModal: React.FC<CustomWordModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Save Word Set Sub-modal */}
+      {isSaveSetModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <FolderPlus className="w-4 h-4 text-amber-400" />
+              <span>{t.saveSetDialogTitle}</span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              {guiLang === 'th'
+                ? `บันทึกคำศัพท์ทั้ง ${wordsList.length} คำ เป็นชุดสำหรับกลับมาเล่นได้ตลอดเวลา`
+                : `Save these ${wordsList.length} words as a reusable word set.`}
+            </p>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">
+                {t.setNameLabel}
+              </label>
+              <input
+                type="text"
+                value={newSetName}
+                onChange={(e) => setNewSetName(e.target.value)}
+                placeholder={t.setNamePlaceholder}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsSaveSetModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                {guiLang === 'th' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCurrentAsNewSet}
+                disabled={!newSetName.trim()}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition disabled:opacity-50 cursor-pointer"
+              >
+                {t.btnConfirmSaveSet}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export / Import Modal */}
+      <ExportImportModal
+        isOpen={isExportImportOpen}
+        onClose={() => setIsExportImportOpen(false)}
+        onImportSuccess={() => {
+          reloadData();
+          setIsExportImportOpen(false);
+        }}
+        guiLang={guiLang}
+      />
     </div>
   );
 };

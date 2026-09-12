@@ -1,0 +1,72 @@
+{
+  "id": "kids-pim-thai",
+  "name": "Kids Pim Thai",
+  "title": "คิดส์พิมพ์ไทย - เกมฝึกพิมพ์ดีดภาษาไทยและอังกฤษสำหรับเด็ก",
+  "description": "เกมฝึกทักษะการพิมพ์สัมผัสภาษาไทยและภาษาอังกฤษสำหรับเด็ก สนุก ตื่นเต้น ปลอดภัย ไร้โฆษณาแอบแฝง",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "productionUrl": "https://www.mxiaapp.com/th/app/kids-pim-thai",
+  "route": "/th/app/kids-pim-thai",
+  "category": "educational",
+  "tags": [
+    "typing",
+    "kids",
+    "thai",
+    "english",
+    "touch-typing",
+    "arcade",
+    "educational"
+  ],
+  "orientation": "landscape",
+  "languages": [
+    "th",
+    "en"
+  ],
+  "storage": {
+    "type": "localStorage",
+    "namespace": "mxia:game:kids-pim-thai:v1:",
+    "keys": [
+      "mxia:game:kids-pim-thai:v1:settings",
+      "mxia:game:kids-pim-thai:v1:scores",
+      "mxia:game:kids-pim-thai:v1:custom_words",
+      "mxia:game:kids-pim-thai:v1:total_words",
+      "mxia:game:kids-pim-thai:v1:word_sets"
+    ],
+    "migration": {
+      "legacyKeys": [
+        "kids_pim_thai_settings_v1",
+        "kids_pim_thai_scores_v1",
+        "kids_pim_thai_custom_words_v1",
+        "kids_pim_thai_total_words_v1"
+      ]
+    }
+  },
+  "security": {
+    "csp": {
+      "defaultSrc": ["'self'"],
+      "scriptSrc": ["'self'"],
+      "styleSrc": ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+      "fontSrc": ["'self'", "https://fonts.gstatic.com"],
+      "imgSrc": ["'self'", "data:"],
+      "connectSrc": ["'self'"],
+      "mediaSrc": ["'self'"]
+    },
+    "externalResources": [
+      {
+        "type": "font",
+        "url": "https://fonts.googleapis.com",
+        "purpose": "Google Fonts (Kanit, Mali, Prompt, Sarabun) for Thai typography"
+      },
+      {
+        "type": "font",
+        "url": "https://fonts.gstatic.com",
+        "purpose": "Google Fonts font binary delivery"
+      }
+    ]
+  },
+  "author": {
+    "name": "Mxia App Hub",
+    "email": "support@mxiaapp.com",
+    "url": "https://www.mxiaapp.com"
+  }
+}

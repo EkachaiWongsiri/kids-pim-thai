@@ -99,6 +99,10 @@ export const TRANSLATIONS = {
     densityChallenge: '🔥 ท้าทาย',
     resetDefault: 'คืนค่าเริ่มต้น',
 
+    // Caps Lock Warning
+    capsLockTitle: 'ปุ่ม Caps Lock เปิดอยู่!',
+    capsLockDesc: 'กรุณากดปุ่ม Caps Lock บนแป้นพิมพ์อีกครั้งเพื่อปิด (เพื่อให้พิมพ์ตัวอักษรได้ถูกต้อง)',
+
     // Custom Word Modal Help & Validation
     customWordHelp: 'คำแนะนำการใช้งาน',
     customWordHelpStep1Title: '1. เลือกภาษาที่ต้องการฝึก',
@@ -110,6 +114,36 @@ export const TRANSLATIONS = {
     langMismatchWarningTh: '⚠️ ตรวจพบตัวอักษรภาษาอังกฤษในโหมดภาษาไทย! กรุณากดปุ่มสลับภาษาด้านขวา หรือแก้ไขคำศัพท์',
     langMismatchWarningEn: '⚠️ ตรวจพบตัวอักษรภาษาไทยในโหมดภาษาอังกฤษ! กรุณากดปุ่มสลับภาษาด้านขวา หรือแก้ไขคำศัพท์',
     btnAutoSwitchLang: '🔄 สลับเป็นโหมดภาษานี้ทันที',
+
+    // Saved Word Sets & Presets
+    savedWordSetsTitle: 'ชุดคำศัพท์ที่บันทึกไว้ของคุณ',
+    btnSaveCurrentAsSet: '💾 บันทึกเป็นชุดคำศัพท์ใหม่',
+    saveSetDialogTitle: 'บันทึกชุดคำศัพท์',
+    setNameLabel: 'ชื่อชุดคำศัพท์:',
+    setNamePlaceholder: 'เช่น คำศัพท์บทที่ 1, สัตว์โลกน่ารัก, ผลไม้ไทย...',
+    btnConfirmSaveSet: 'บันทึกชุดคำศัพท์',
+    loadSetToPlay: 'นำชุดคำนี้มาเล่น',
+    deleteSetConfirm: 'ลบชุดคำศัพท์นี้?',
+    noSavedSetsYet: 'ยังไม่มีชุดคำศัพท์ที่บันทึกไว้ คุณสามารถพิมพ์คำศัพท์แล้วกด "บันทึกเป็นชุดคำศัพท์ใหม่" ได้เลย',
+
+    // Export & Import
+    exportImportTitle: 'ส่งออก / นำเข้าข้อมูล (Export & Import)',
+    exportImportDesc: 'แชร์ชุดคำศัพท์และการตั้งค่าให้นักเรียนหรือเครื่องอื่นๆ ในห้องเรียนด้วยไฟล์ kids-pim-thai.json',
+    btnExportData: '📤 ส่งออกข้อมูล (Export JSON)',
+    btnImportData: '📥 นำเข้าข้อมูล (Import JSON)',
+    exportOptionsTitle: 'เลือกข้อมูลที่ต้องการส่งออก:',
+    optCustomWords: 'คลังคำศัพท์ที่กำหนดเอง & ชุดคำศัพท์ที่บันทึกไว้',
+    optGameSettings: 'การตั้งค่าเกม (ความเร็ว, เป้าหมายคำ, เสียง)',
+    optScores: 'คะแนนสูงสุดและสถิติด่าน',
+    btnDownloadJson: 'ดาวน์โหลดไฟล์ kids-pim-thai.json',
+    importPromptTitle: 'เลือกไฟล์ kids-pim-thai.json เพื่อนำเข้า',
+    importConflictTitle: 'พบข้อมูลเดิมในระบบ ต้องการจัดการอย่างไร?',
+    importConflictDesc: 'เลือกรูปแบบการนำเข้าข้อมูลเพื่อป้องกันข้อมูลสูญหาย:',
+    importModeOverwrite: '🔄 แทนที่ทั้งหมด (Overwrite - ล้างของเก่าใช้ของใหม่)',
+    importModeMerge: '➕ รวมเข้าด้วยกัน (Merge - ต่อท้ายและจัดลำดับด่านใหม่อัตโนมัติ)',
+    importModeSkip: '⏭️ ข้ามรายการที่ซ้ำ (Skip Duplicates - เพิ่มเฉพาะอันใหม่)',
+    importSuccessMsg: 'นำเข้าข้อมูลเรียบร้อยแล้ว!',
+    importFailMsg: 'เกิดข้อผิดพลาดในการนำเข้าไฟล์ กรุณาตรวจสอบรูปแบบไฟล์ JSON',
 
     // Dialogs
     gameOverTitle: 'พลังชีวิตหมดแล้ว!',
@@ -225,6 +259,10 @@ export const TRANSLATIONS = {
     densityChallenge: '🔥 Challenge',
     resetDefault: 'Reset Defaults',
 
+    // Caps Lock Warning
+    capsLockTitle: 'Caps Lock is ON!',
+    capsLockDesc: 'Please press Caps Lock on your keyboard to turn it off (to ensure correct typing).',
+
     // Custom Word Modal Help & Validation
     customWordHelp: 'How to Use Custom Word Bank',
     customWordHelpStep1Title: '1. Select Language',
@@ -236,6 +274,36 @@ export const TRANSLATIONS = {
     langMismatchWarningTh: '⚠️ English characters detected in Thai mode! Please switch language or fix text.',
     langMismatchWarningEn: '⚠️ Thai characters detected in English mode! Please switch language or fix text.',
     btnAutoSwitchLang: '🔄 Switch Language Now',
+
+    // Saved Word Sets & Presets
+    savedWordSetsTitle: 'Your Saved Word Sets',
+    btnSaveCurrentAsSet: '💾 Save as New Word Set',
+    saveSetDialogTitle: 'Save Word Set',
+    setNameLabel: 'Word Set Name:',
+    setNamePlaceholder: 'e.g. Chapter 1 Vocabulary, Animals, Sight Words...',
+    btnConfirmSaveSet: 'Save Word Set',
+    loadSetToPlay: 'Play This Word Set',
+    deleteSetConfirm: 'Delete this word set?',
+    noSavedSetsYet: 'No saved word sets yet. Type words and click "Save as New Word Set".',
+
+    // Export & Import
+    exportImportTitle: 'Export & Import Data',
+    exportImportDesc: 'Share word sets and settings across student devices using kids-pim-thai.json',
+    btnExportData: '📤 Export JSON',
+    btnImportData: '📥 Import JSON',
+    exportOptionsTitle: 'Select data to export:',
+    optCustomWords: 'Custom Words & Saved Word Sets',
+    optGameSettings: 'Game Settings (Speed, Word Goals, Audio)',
+    optScores: 'High Scores & Stage Records',
+    btnDownloadJson: 'Download kids-pim-thai.json',
+    importPromptTitle: 'Select kids-pim-thai.json to import',
+    importConflictTitle: 'Existing data found. How would you like to handle it?',
+    importConflictDesc: 'Choose an import strategy to prevent accidental data loss:',
+    importModeOverwrite: '🔄 Overwrite (Replace all existing with new file)',
+    importModeMerge: '➕ Merge (Append new words & re-index IDs automatically)',
+    importModeSkip: '⏭️ Skip Duplicates (Add only new unique items)',
+    importSuccessMsg: 'Data imported successfully!',
+    importFailMsg: 'Failed to import file. Please verify JSON format.',
 
     // Dialogs
     gameOverTitle: 'Out of Hearts!',

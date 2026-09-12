@@ -14,13 +14,15 @@ import { AffiliateSidebar } from './components/AffiliateSidebar';
 
 import { THAI_STAGES, ENGLISH_STAGES } from './data/stagesData';
 import { Language, Stage, FallingWord, Particle, LaserBeam, FloatingText, GameStats } from './types/game';
-import { GuiLanguage } from './data/i18n';
+import { GuiLanguage, TRANSLATIONS } from './data/i18n';
 import { audioService } from './services/audioService';
 import { StorageService } from './services/storageService';
+import { AlertTriangle } from 'lucide-react';
 
 export function App() {
   // GUI Language ('th' | 'en')
   const [guiLang, setGuiLang] = useState<GuiLanguage>('th');
+  const t = TRANSLATIONS[guiLang];
 
   // Game Configuration & Settings
   const [language, setLanguage] = useState<Language>('th');
@@ -33,6 +35,7 @@ export function App() {
   const [isVoiceMuted, setIsVoiceMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
 
   // Ready State (Start overlay before words fall)
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
@@ -60,6 +63,15 @@ export function App() {
   const [isCustomWordsOpen, setIsCustomWordsOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [activePortalModal, setActivePortalModal] = useState<'about' | 'contact' | 'privacy' | 'terms' | null>(null);
+
+  // Auto-pause when any modal opens
+  const isAnyModalOpen = isStageSelectOpen || isCustomWordsOpen || isSettingsOpen || activePortalModal !== null;
+
+  useEffect(() => {
+    if (isAnyModalOpen && gameState === 'playing' && isGameStarted && !isPaused) {
+      setIsPaused(true);
+    }
+  }, [isAnyModalOpen, gameState, isGameStarted, isPaused]);
 
   // High-performance simulation entity refs
   const wordsRef = useRef<FallingWord[]>([]);
@@ -478,9 +490,13 @@ export function App() {
     }
   }, [updateTargetChar]);
 
-  // Physical Keyboard Listener
+  // Physical Keyboard Listener & Caps Lock Detection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check Caps Lock
+      const caps = e.getModifierState('CapsLock');
+      setIsCapsLockOn(caps);
+
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -503,7 +519,9 @@ export function App() {
       }
     };
 
-    const handleKeyUp = () => {
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const caps = e.getModifierState('CapsLock');
+      setIsCapsLockOn(caps);
       setActivePhysicalKey(null);
     };
 
@@ -765,7 +783,15 @@ export function App() {
         />
 
         {/* Center Game Viewport */}
-        <div className="flex-1 flex flex-col items-center justify-between max-w-5xl w-full h-full overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-between max-w-5xl w-full h-full overflow-hidden relative">
+          {/* Caps Lock Warning Banner */}
+          {isCapsLockOn && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 px-4 py-2 rounded-2xl font-black text-xs md:text-sm shadow-2xl shadow-orange-500/40 flex items-center gap-2 animate-bounce border-2 border-amber-300">
+              <AlertTriangle className="w-5 h-5 text-slate-950 shrink-0" />
+              <span>{t.capsLockTitle} {t.capsLockDesc}</span>
+            </div>
+          )}
+
           {/* Game Header Controls */}
           <GameHeader
             lives={lives}
