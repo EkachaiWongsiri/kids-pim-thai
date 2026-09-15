@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
 import { Globe, Info, Mail, ShieldCheck, FileText, ExternalLink, Menu, X, Maximize, Minimize } from 'lucide-react';
 import mxiaLogo from '../assets/mxia-logo.png';
-import kidsLogo from '../assets/kids-pim-thai-logo.png';
+
+const kidsLogo = `${import.meta.env.BASE_URL}assets/kids-pim-thai-logo.png`;
 
 interface PortalNavbarProps {
   guiLang: GuiLanguage;

@@ -4,14 +4,14 @@ This game is part of the MXIA Kids Game Platform.
 
 ## Required package contract
 
-- The production URL is `https://www.mxiaapp.com/th/app/{game-id}`.
+- The production URL is `https://www.mxiaapp.com/app/{game-id}`. Previously published `/th/app/{game-id}` routes are redirects only.
 - The project must contain `game.manifest.json`.
 - Every build must produce a self-contained `dist/` directory with `index.html`.
 - Do not manually edit generated files in `dist/`.
 - Do not include `node_modules`, source files, README files, or development configuration in `dist/`.
 - All document-level asset URLs must work from the exact no-trailing-slash production route.
 - Do not use root assets such as `/assets/app.js` or relative document assets such as `./assets/app.js`.
-- Assets must remain under `/th/app/{game-id}/`.
+- Assets must remain under `/app/{game-id}/`.
 
 ## Storage
 

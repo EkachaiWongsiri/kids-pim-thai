@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/th/app/kids-pim-thai/',
+  base: '/app/kids-pim-thai/',
   server: {
     port: 3000,
     open: true

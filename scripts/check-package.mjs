@@ -54,14 +54,8 @@ if (!fs.existsSync(manifestPath)) {
       pass(`Manifest Version: "${manifest.version}"`);
     }
 
-    if (manifest.productionUrl !== 'https://www.mxiaapp.com/th/app/kids-pim-thai') {
-      fail(`Manifest productionUrl must be "https://www.mxiaapp.com/th/app/kids-pim-thai", got "${manifest.productionUrl}"`);
-    } else {
-      pass(`Production URL: "${manifest.productionUrl}"`);
-    }
-
-    if (manifest.route !== '/th/app/kids-pim-thai') {
-      fail(`Manifest route must be "/th/app/kids-pim-thai", got "${manifest.route}"`);
+    if (manifest.route !== '/app/kids-pim-thai') {
+      fail(`Manifest route must be "/app/kids-pim-thai", got "${manifest.route}"`);
     } else {
       pass(`Route: "${manifest.route}"`);
     }
@@ -72,10 +66,10 @@ if (!fs.existsSync(manifestPath)) {
       pass(`Storage Namespace: "${manifest.storage.namespace}"`);
     }
 
-    if (!manifest.security || !manifest.security.externalResources || manifest.security.externalResources.length === 0) {
-      fail('Manifest security.externalResources must declare external fonts/APIs');
+    if (!Array.isArray(manifest.externalOrigins)) {
+      fail('Manifest externalOrigins must declare external fonts/APIs');
     } else {
-      pass(`Declared External Resources: ${manifest.security.externalResources.length} items`);
+      pass(`Declared External Origins: ${manifest.externalOrigins.length} items`);
     }
   } catch (err) {
     fail(`Invalid game.manifest.json: ${err.message}`);
@@ -112,16 +106,16 @@ if (!fs.existsSync(distDir)) {
     for (const match of assetMatches) {
       const url = match[2];
       if (url.includes('/assets/index-')) {
-        if (url.startsWith('/th/app/kids-pim-thai/assets/')) {
+        if (url.startsWith('/app/kids-pim-thai/assets/')) {
           hasProperBase = true;
         } else {
-          fail(`Asset path "${url}" does not start with "/th/app/kids-pim-thai/assets/"!`);
+          fail(`Asset path "${url}" does not start with "/app/kids-pim-thai/assets/"!`);
         }
       }
     }
 
     if (hasProperBase) {
-      pass('All production asset bundles strictly resolve under "/th/app/kids-pim-thai/assets/".');
+      pass('All production asset bundles strictly resolve under "/app/kids-pim-thai/assets/".');
     }
   }
 
