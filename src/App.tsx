@@ -16,7 +16,7 @@ import { THAI_STAGES, ENGLISH_STAGES } from './data/stagesData';
 import { Language, Stage, FallingWord, Particle, LaserBeam, FloatingText, GameStats } from './types/game';
 import { GuiLanguage, TRANSLATIONS } from './data/i18n';
 import { audioService } from './services/audioService';
-import { StorageService } from './services/storageService';
+import { StorageService, VoiceMode } from './services/storageService';
 import { AlertTriangle } from 'lucide-react';
 
 export function App() {
@@ -34,6 +34,7 @@ export function App() {
   const [isSfxMuted, setIsSfxMuted] = useState<boolean>(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>('fast');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
 
@@ -182,6 +183,10 @@ export function App() {
     setTargetWordsCount(saved.targetWordsCount || 10);
     setMaxConcurrentWords(saved.maxConcurrentWords || 4);
 
+    const initialVoiceMode = saved.voiceMode || 'fast';
+    setVoiceMode(initialVoiceMode);
+    audioService.setVoiceMode(initialVoiceMode);
+
     audioService.isSfxMuted = !saved.sfxEnabled;
     audioService.isVoiceMuted = !saved.voiceEnabled;
     audioService.isBgmMuted = !saved.bgmEnabled;
@@ -318,12 +323,16 @@ export function App() {
 
       if (match) {
         audioService.playHitLetterSound();
-        audioService.speakChar(expectedChar, curStage.language);
+
+        const isCompleted = targetWord.typedIndex + 1 >= targetWord.text.length;
+        if (!isCompleted) {
+          audioService.speakSpellingChar(expectedChar, curStage.language);
+        }
 
         targetWord.typedIndex += 1;
         setLettersTyped((prev) => prev + 1);
 
-        if (targetWord.typedIndex >= targetWord.text.length) {
+        if (isCompleted) {
           // Word Completed!
           const cannonX = 480;
           const cannonY = 460;
@@ -419,7 +428,12 @@ export function App() {
         const word = bestMatch.word;
 
         audioService.playHitLetterSound();
-        audioService.speakChar(word.text[0], curStage.language);
+
+        if (word.text.length === 1) {
+          audioService.speakChar(word.text[0], curStage.language);
+        } else {
+          audioService.speakSpellingChar(word.text[0], curStage.language);
+        }
         setLettersTyped((prev) => prev + 1);
 
         if (word.text.length === 1) {
@@ -727,6 +741,12 @@ export function App() {
     StorageService.saveSettings({ maxConcurrentWords: count });
   };
 
+  const handleVoiceModeChange = (mode: VoiceMode) => {
+    setVoiceMode(mode);
+    audioService.setVoiceMode(mode);
+    StorageService.saveSettings({ voiceMode: mode });
+  };
+
   const handleLanguageChange = (newLang: Language) => {
     const stageList = newLang === 'th' ? THAI_STAGES : ENGLISH_STAGES;
     initStage(stageList[0], undefined, false);
@@ -810,6 +830,8 @@ export function App() {
             onToggleVoice={handleToggleVoice}
             isBgmMuted={isBgmMuted}
             onToggleBgm={handleToggleBgm}
+            voiceMode={voiceMode}
+            onToggleVoiceMode={() => handleVoiceModeChange(voiceMode === 'fast' ? 'natural' : 'fast')}
             isPaused={isPaused}
             onTogglePause={() => setIsPaused((prev) => !prev)}
             onOpenStageSelect={() => setIsStageSelectOpen(true)}
@@ -909,6 +931,8 @@ export function App() {
         onToggleVoice={handleToggleVoice}
         isBgmMuted={isBgmMuted}
         onToggleBgm={handleToggleBgm}
+        voiceMode={voiceMode}
+        onChangeVoiceMode={handleVoiceModeChange}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         guiLang={guiLang}

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Settings, X, Target, Layers, Gauge, Maximize, Minimize, Volume2, VolumeX, Music, Mic, MicOff, RotateCcw } from 'lucide-react';
+import { Settings, X, Target, Layers, Gauge, Maximize, Minimize, Volume2, VolumeX, Music, Mic, MicOff, RotateCcw, Zap, Sparkles } from 'lucide-react';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
+import { VoiceMode } from '../services/storageService';
 
 interface GameSettingsModalProps {
   isOpen: boolean;
@@ -17,6 +18,8 @@ interface GameSettingsModalProps {
   onToggleVoice: () => void;
   isBgmMuted: boolean;
   onToggleBgm: () => void;
+  voiceMode: VoiceMode;
+  onChangeVoiceMode: (mode: VoiceMode) => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   guiLang: GuiLanguage;
@@ -47,6 +50,8 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
   onToggleVoice,
   isBgmMuted,
   onToggleBgm,
+  voiceMode,
+  onChangeVoiceMode,
   isFullscreen,
   onToggleFullscreen,
   guiLang,
@@ -59,6 +64,7 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
     onChangeTargetWordsCount(10);
     onChangeMaxConcurrentWords(4);
     onChangeSpeed(0.8);
+    onChangeVoiceMode('fast');
     if (isSfxMuted) onToggleSfx();
     if (isVoiceMuted) onToggleVoice();
     if (isBgmMuted) onToggleBgm();
@@ -190,7 +196,80 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* 4. Display & Sound Toggles */}
+          {/* 4. Voice Mode Selector (Fast vs Natural AI) */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-bold text-slate-200">{t.voiceModeTitle}</span>
+              </div>
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                voiceMode === 'fast'
+                  ? 'bg-amber-400/10 text-amber-400 border-amber-400/30'
+                  : 'bg-purple-400/10 text-purple-400 border-purple-400/30'
+              }`}>
+                {voiceMode === 'fast' ? '⚡ 0ms Fast Mode' : '✨ Natural AI Mode'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              {t.voiceModeDesc}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Fast 0ms Mode */}
+              <button
+                type="button"
+                onClick={() => onChangeVoiceMode('fast')}
+                className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  voiceMode === 'fast'
+                    ? 'bg-amber-500/15 border-amber-500/60 text-amber-200 shadow-md shadow-amber-500/10'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    {t.voiceModeFast}
+                  </span>
+                  {voiceMode === 'fast' && (
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-400/20 px-1.5 py-0.5 rounded">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] leading-tight text-slate-400">
+                  {t.voiceModeFastDesc}
+                </p>
+              </button>
+
+              {/* Natural AI Mode */}
+              <button
+                type="button"
+                onClick={() => onChangeVoiceMode('natural')}
+                className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  voiceMode === 'natural'
+                    ? 'bg-purple-500/15 border-purple-500/60 text-purple-200 shadow-md shadow-purple-500/10'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                    {t.voiceModeNatural}
+                  </span>
+                  {voiceMode === 'natural' && (
+                    <span className="text-[10px] font-bold text-purple-400 bg-purple-400/20 px-1.5 py-0.5 rounded">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] leading-tight text-slate-400">
+                  {t.voiceModeNaturalDesc}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* 5. Display & Sound Toggles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Fullscreen Toggle */}
             <button

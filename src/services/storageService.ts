@@ -1,5 +1,7 @@
 import { Language } from '../types/game';
 
+export type VoiceMode = 'fast' | 'natural';
+
 export interface SavedSettings {
   sfxEnabled: boolean;
   voiceEnabled: boolean;
@@ -9,6 +11,7 @@ export interface SavedSettings {
   lastPlayedStageId: number;
   targetWordsCount: number;
   maxConcurrentWords: number;
+  voiceMode: VoiceMode;
 }
 
 export interface StageScore {
@@ -66,6 +69,7 @@ const DEFAULT_SETTINGS: SavedSettings = {
   lastPlayedStageId: 1,
   targetWordsCount: 10,
   maxConcurrentWords: 4,
+  voiceMode: 'fast',
 };
 
 export class StorageService {

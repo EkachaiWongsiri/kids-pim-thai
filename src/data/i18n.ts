@@ -95,9 +95,13 @@ export const TRANSLATIONS = {
     wordsCountUnit: 'คำ',
     concurrentUnit: 'คำบนจอ',
     densityFocus: '⚡ โฟกัสทีละคำ (เหมาะกับเด็กเล็ก)',
-    densityNormal: '⭐ ปกติ',
-    densityChallenge: '🔥 ท้าทาย',
     resetDefault: 'คืนค่าเริ่มต้น',
+    voiceModeTitle: 'โหมดเสียงอ่านคำ (Voice Engine)',
+    voiceModeDesc: 'เลือกโหมดเสียงตามความต้องการในการเล่นเกมหรือการเรียนรู้',
+    voiceModeFast: '⚡ เสียงสังเคราะห์ความเร็วสูง (0ms ไม่ดีเลย์)',
+    voiceModeFastDesc: 'สังเคราะห์เสียงในเครื่อง เหมาะสำหรับเล่นเกมกดเร็วๆ ลื่นไหลสะใจ',
+    voiceModeNatural: '✨ เสียงธรรมชาติ AI (Natural AI)',
+    voiceModeNaturalDesc: 'เสียงชัดเจนเป็นธรรมชาติที่สุด เหมาะสำหรับผู้ฝึกสะกดคำหรือชาวต่างชาติ (ใช้เน็ต)',
 
     // Caps Lock Warning
     capsLockTitle: 'ปุ่ม Caps Lock เปิดอยู่!',
@@ -258,6 +262,12 @@ export const TRANSLATIONS = {
     densityNormal: '⭐ Normal',
     densityChallenge: '🔥 Challenge',
     resetDefault: 'Reset Defaults',
+    voiceModeTitle: 'Speech Engine Mode',
+    voiceModeDesc: 'Choose voice mode for fast arcade speed or natural AI clarity',
+    voiceModeFast: '⚡ Fast / Zero-Lag Mode (0ms)',
+    voiceModeFastDesc: 'Offline synthesizer in your device. Instant reaction, perfect for fast typing.',
+    voiceModeNatural: '✨ Natural AI Voice Mode',
+    voiceModeNaturalDesc: 'High-quality natural AI voice. Perfect for learners & pronunciation (uses internet).',
 
     // Caps Lock Warning
     capsLockTitle: 'Caps Lock is ON!',

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Heart, Flame, Volume2, VolumeX, Mic, MicOff, Music, Gauge, Sparkles, Pause, Play, RefreshCw, Settings, Maximize, Minimize } from 'lucide-react';
+import { Heart, Flame, Volume2, VolumeX, Mic, MicOff, Music, Gauge, Sparkles, Pause, Play, RefreshCw, Settings, Maximize, Minimize, Zap } from 'lucide-react';
 import { Language, Stage } from '../types/game';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
+import { VoiceMode } from '../services/storageService';
 
 interface GameHeaderProps {
   lives: number;
@@ -20,6 +21,8 @@ interface GameHeaderProps {
   onToggleVoice: () => void;
   isBgmMuted: boolean;
   onToggleBgm: () => void;
+  voiceMode: VoiceMode;
+  onToggleVoiceMode: () => void;
   isPaused: boolean;
   onTogglePause: () => void;
   onOpenStageSelect: () => void;
@@ -52,6 +55,8 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   onToggleVoice,
   isBgmMuted,
   onToggleBgm,
+  voiceMode,
+  onToggleVoiceMode,
   isPaused,
   onTogglePause,
   onOpenStageSelect,
@@ -231,6 +236,35 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           >
             {!isVoiceMuted ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
           </button>
+
+          {/* Quick Voice Mode Switch (⚡ 0ms Fast vs ✨ AI Natural) */}
+          {!isVoiceMuted && (
+            <button
+              onClick={onToggleVoiceMode}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                voiceMode === 'fast'
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30 shadow-sm'
+                  : 'bg-purple-500/20 border-purple-500/40 text-purple-300 hover:bg-purple-500/30 shadow-sm'
+              }`}
+              title={
+                voiceMode === 'fast'
+                  ? (guiLang === 'th' ? 'โหมดเสียง: ⚡ ความเร็วสูง 0ms (คลิกเพื่อสลับเป็นเสียงธรรมชาติ AI)' : 'Voice Mode: ⚡ Fast 0ms (Click to switch to Natural AI)')
+                  : (guiLang === 'th' ? 'โหมดเสียง: ✨ ธรรมชาติ AI (คลิกเพื่อสลับเป็นความเร็วสูง 0ms)' : 'Voice Mode: ✨ Natural AI (Click to switch to Fast 0ms)')
+              }
+            >
+              {voiceMode === 'fast' ? (
+                <>
+                  <Zap className="w-3 h-3 text-amber-400" />
+                  <span className="text-[11px]">0ms</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3 h-3 text-purple-400" />
+                  <span className="text-[11px]">AI</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Restart Stage Button */}
           <button

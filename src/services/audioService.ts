@@ -1,20 +1,64 @@
 import { Language } from '../types/game';
+import { VoiceMode } from './storageService';
 
-// Thai Phonetic descriptions for friendly kid voice
+// Platform Guard: Check if running on Desktop vs Mobile/Tablet
+export function isDesktopPlatform(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+}
+
+// Thai Phonetic descriptions for friendly kid voice (Single-letter mode / Stages 1-4)
 const THAI_LETTER_PHONETICS: Record<string, string> = {
+  // Consonants (พยัญชนะ 44 ตัว)
   'ก': 'ก ไก่', 'ข': 'ข ไข่', 'ฃ': 'ฃ ขวด', 'ค': 'ค ควาย', 'ฅ': 'ฅ คน', 'ฆ': 'ฆ ระฆัง',
-  'ง': 'ง งู', 'จ': 'จ จาน', 'ฉ': 'ฉ ฉิ่ง', 'ช': 'ช ช้าง', 'ซ': 'ซ โซ่', 'ฌ': 'ฌ กะเฌอ',
-  'ญ': 'ญ หญิง', 'ฎ': 'ฎ ชฎา', 'ฏ': 'ฏ ปฏัก', 'ฐ': 'ฐ ฐาน', 'ฑ': 'ฑ มณโฑ', 'ฒ': 'ฒ ผู้เฒ่า',
-  'ณ': 'ณ เณร', 'ด': 'ด เด็ก', 'ต': 'ต เต่า', 'ถ': 'ถ ถุง', 'ท': 'ท ทหาร', 'ธ': 'ธ ธง',
-  'น': 'น หนู', 'บ': 'บ ใบไม้', 'ป': 'ป ปลา', 'ผ': 'ผ ผึ้ง', 'ฝ': 'ฝ ฝา', 'พ': 'พ พาน',
-  'ฟ': 'ฟ ฟัน', 'ภ': 'ภ สำเภา', 'ม': 'ม ม้า', 'ย': 'ย ยักษ์', 'ร': 'ร เรือ', 'ล': 'ล ลิง',
-  'ว': 'ว แหวน', 'ศ': 'ศ ศาลา', 'ษ': 'ษ ฤๅษี', 'ส': 'ส เสือ', 'ห': 'ห หีบ', 'ฬ': 'ฬ จุฬา',
-  'อ': 'อ อ่าง', 'ฮ': 'ฮ นกฮูก',
-  'ะ': 'สระ อะ', 'า': 'สระ อา', 'ิ': 'สระ อิ', 'ี': 'สระ อี', 'ึ': 'สระ อึ', 'ื': 'สระ อือ',
-  'ุ': 'สระ อุ', 'ู': 'สระ อู', 'เ': 'สระ เอ', 'แ': 'สระ แอ', 'โ': 'สระ โอ', 'ใ': 'สระ ใอม้วน',
-  'ไ': 'สระ ไอไม้มลาย', 'ำ': 'สระ อำ',
-  '่': 'ไม้เอก', '้': 'ไม้โท', '๊': 'ไม้ตรี', '๋': 'ไม้จัตวา', '์': 'ไม้ทัณฑฆาต การันต์',
-  '็': 'ไม้ไต่คู้', 'ๆ': 'ไม้ยมก', 'ฯ': 'ไปยาลน้อย', '฿': 'บาท'
+  'ง': 'ง งู', 'จ': 'จ จาน', 'ฉ': 'ฉ ฉิ่ง', 'ช': 'ช ช้าง', 'ซ': 'ซ โซ่', 'ฌ': 'ชอกะเชอ',
+  'ญ': 'ญ หญิง', 'ฎ': 'ดอชะดา', 'ฏ': 'ฏ ปฏัก', 'ฐ': 'ฐ ฐาน', 'ฑ': 'ทอ มนโท', 'ฒ': 'ฒ ผู้เฒ่า',
+  'ณ': 'นอเนร', 'ด': 'ดอเด็ก', 'ต': 'ต เต่า', 'ถ': 'ถ ถุง', 'ท': 'ท ทหาร', 'ธ': 'ทอทง',
+  'น': 'น หนู', 'บ': 'บ ใบไม้', 'ป': 'ปอปลา', 'ผ': 'ผ๋อพึ่ง', 'ฝ': 'ฝอฝา', 'พ': 'พ พาน',
+  'ฟ': 'ฟ ฟัน', 'ภ': 'ภ สำเภา', 'ม': 'ม ม้า', 'ย': 'ยอยัก', 'ร': 'รอเรือ', 'ล': 'ลอลิง',
+  'ว': 'วอแหวน', 'ศ': 'ศ ศาลา', 'ษ': 'สอลือสี', 'ส': 'ส เสือ', 'ห': 'หอหีบ', 'ฬ': 'ฬ จุฬา',
+  'อ': 'อออ่าง', 'ฮ': 'ฮ นกฮูก',
+  
+  // Vowels & Combining Marks (สระและเครื่องหมาย)
+  'ะ': 'สะหร่ะ อะ', 'ั': 'ไม้หันอากาศ', 'า': 'สะหร่ะ อา', 'ำ': 'สะหร่ะ อำ',
+  'ิ': 'สะหร่ะ อิ', 'ี': 'สะหร่ะ อี', 'ึ': 'สะหร่ะ อึ', 'ื': 'สะหร่ะ อือ',
+  'ุ': 'สะหร่ะ อุ', 'ู': 'สะหร่ะ อู', 'ฺ': 'พินทุ',
+  'เ': 'สะหร่ะ เอ', 'แ': 'สะหร่ะ แอ', 'โ': 'สะหร่ะ โอ',
+  'ใ': 'สะหร่ะ ใอไม้ม้วน', 'ไ': 'สะหร่ะ ไอไม้มลาย', 'ๅ': 'ลากข้าง',
+  
+  // Tone Marks & Special Symbols (วรรณยุกต์และเครื่องหมายพิเศษ)
+  '่': 'ไม้เอก', '้': 'ไม้โท', '๊': 'ไม้ตรี', '๋': 'ไม้จัตวา',
+  '์': 'การัน', '็': 'ไม้ไต่คู้', 'ๆ': 'ไม้ยมก',
+  'ฯ': 'ไปยาลน้อย', 'ฯลฯ': 'ไปยาลใหญ่', '฿': 'บาท',
+  'ํ': 'นิคหิต', '๎': 'ยามักการ',
+  'ฤ': 'ลึ', 'ฤๅ': 'ตัว รือ', 'ฦ': 'ตัว ลึ', 'ฦๅ': 'ตัว ลือ'
+};
+
+// Thai Fast Spelling Phonetics for in-word typing (กอ - อา - งอ -> กาง)
+const THAI_SPELLING_PHONETICS: Record<string, string> = {
+  // Consonant Spelling Sounds (พยัญชนะแจกลูกสะกด)
+  'ก': 'กอ', 'ข': 'ขอ', 'ฃ': 'ขอ', 'ค': 'คอ', 'ฅ': 'คอ', 'ฆ': 'คอ',
+  'ง': 'งอ', 'จ': 'จอ', 'ฉ': 'ฉอ', 'ช': 'ชอ', 'ซ': 'ซอ', 'ฌ': 'ชอ',
+  'ญ': 'ยอ', 'ฎ': 'ดอ', 'ฏ': 'ตอ', 'ฐ': 'ถอ', 'ฑ': 'ทอ', 'ฒ': 'ทอ',
+  'ณ': 'นอ', 'ด': 'ดอ', 'ต': 'ตอ', 'ถ': 'ถอ', 'ท': 'ทอ', 'ธ': 'ทอ',
+  'น': 'นอ', 'บ': 'บอ', 'ป': 'ปอ', 'ผ': 'ผอ', 'ฝ': 'ฝอ', 'พ': 'พอ',
+  'ฟ': 'ฟอ', 'ภ': 'พอ', 'ม': 'มอ', 'ย': 'ยอ', 'ร': 'รอ', 'ล': 'ลอ',
+  'ว': 'วอ', 'ศ': 'สอ', 'ษ': 'สอ', 'ส': 'สอ', 'ห': 'หอ', 'ฬ': 'ลอ',
+  'อ': 'ออ', 'ฮ': 'ฮอ',
+
+  // Vowel Spelling Sounds (สระแจกลูกสะกด)
+  'ะ': 'อะ', 'ั': 'หันอากาศ', 'า': 'อา', 'ำ': 'อำ',
+  'ิ': 'อิ', 'ี': 'อี', 'ึ': 'อึ', 'ื': 'อือ',
+  'ุ': 'อุ', 'ู': 'อู', 'ฺ': 'พินทุ',
+  'เ': 'เอ', 'แ': 'แอ', 'โ': 'โอ',
+  'ใ': 'ไอ', 'ไ': 'ไอ', 'ๅ': 'ลากข้าง',
+
+  // Tone Marks & Symbols
+  '่': 'ไม้เอก', '้': 'ไม้โท', '๊': 'ไม้ตรี', '๋': 'ไม้จัตวา',
+  '์': 'การัน', '็': 'ไม้ไต่คู้', 'ๆ': 'ไม้ยมก',
+  'ฯ': 'ไปยาลน้อย', 'ฯลฯ': 'ไปยาลใหญ่', '฿': 'บาท',
+  'ฤ': 'ลึ', 'ฤๅ': 'รือ', 'ฦ': 'ลึ', 'ฦๅ': 'ลือ'
 };
 
 // Cheerful Arcade Music Notes (Frequencies in Hz)
@@ -57,6 +101,13 @@ class AudioService {
   public sfxVolume: number = 0.8;
   public bgmVolume: number = 0.18; // Soft pleasant background volume
 
+  // Web Speech Synthesis state
+  private voices: SpeechSynthesisVoice[] = [];
+  public bestThaiVoice: SpeechSynthesisVoice | null = null;
+  public bestEnglishVoice: SpeechSynthesisVoice | null = null;
+  public isVoicesLoaded: boolean = false;
+  public voiceMode: VoiceMode = 'fast'; // 'fast' (Local 0ms) or 'natural' (AI Online Neural)
+
   // BGM Sequencer state
   private isBgmPlaying: boolean = false;
   private bgmStep: number = 0;
@@ -65,7 +116,168 @@ class AudioService {
   private tempoBpm: number = 136; // Cheerful kids arcade tempo
 
   constructor() {
-    // Initialized lazily
+    this.initVoices();
+  }
+
+  public setVoiceMode(mode: VoiceMode) {
+    this.voiceMode = mode;
+    this.updateBestVoices();
+  }
+
+  private initVoices() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const populateVoices = () => {
+      try {
+        const list = window.speechSynthesis.getVoices();
+        if (list && list.length > 0) {
+          this.voices = list;
+          this.isVoicesLoaded = true;
+          this.updateBestVoices();
+        }
+      } catch {
+        // Ignore
+      }
+    };
+
+    populateVoices();
+    if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+      window.speechSynthesis.onvoiceschanged = populateVoices;
+    }
+  }
+
+  public updateBestVoices() {
+    if (!isDesktopPlatform()) {
+      // Platform Guard: On Mobile (Android / iOS), keep native default behavior 100%
+      this.bestThaiVoice = null;
+      this.bestEnglishVoice = null;
+      return;
+    }
+
+    if (!this.voices || this.voices.length === 0) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        this.voices = window.speechSynthesis.getVoices();
+      }
+    }
+
+    // --- Select Best Thai Voice on Desktop ---
+    const thaiVoices = this.voices.filter(v => {
+      const lang = (v.lang || '').toLowerCase();
+      const name = (v.name || '').toLowerCase();
+      return lang === 'th-th' || lang.startsWith('th') || name.includes('thai') || name.includes('ภาษาไทย');
+    });
+
+    if (thaiVoices.length > 0) {
+      if (this.voiceMode === 'natural') {
+        // Mode: Natural AI (Quality Priority for Thai Learners / Foreigners)
+        const naturalRankings = [
+          (v: SpeechSynthesisVoice) => /premwadee/i.test(v.name) && /natural|online/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /niwat/i.test(v.name) && /natural|online/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /natural|neural|online.*natural/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /premwadee/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /niwat/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /google.*(thai|ภาษาไทย)/i.test(v.name) || (/google/i.test(v.name) && (v.lang || '').toLowerCase().startsWith('th')),
+          (v: SpeechSynthesisVoice) => /siri|kanya|narisa/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /pattara|achara/i.test(v.name),
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase() === 'th-th',
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase().startsWith('th'),
+        ];
+
+        for (const ranker of naturalRankings) {
+          const match = thaiVoices.find(ranker);
+          if (match) {
+            this.bestThaiVoice = match;
+            break;
+          }
+        }
+      } else {
+        // Mode: Fast Zero-Lag (Local Device Synthesizer for Fast Arcade Typing)
+        const fastRankings = [
+          (v: SpeechSynthesisVoice) => v.localService && /google.*(thai|ภาษาไทย)/i.test(v.name),
+          (v: SpeechSynthesisVoice) => v.localService && /siri|kanya|narisa/i.test(v.name),
+          (v: SpeechSynthesisVoice) => v.localService && /pattara|achara/i.test(v.name),
+          (v: SpeechSynthesisVoice) => v.localService && (v.lang || '').toLowerCase().startsWith('th'),
+          (v: SpeechSynthesisVoice) => !/online/i.test(v.name) && /google.*(thai|ภาษาไทย)/i.test(v.name),
+          (v: SpeechSynthesisVoice) => !/online/i.test(v.name) && /siri|kanya|narisa/i.test(v.name),
+          (v: SpeechSynthesisVoice) => !/online/i.test(v.name) && /pattara|achara/i.test(v.name),
+          (v: SpeechSynthesisVoice) => !/online/i.test(v.name) && (v.lang || '').toLowerCase().startsWith('th'),
+          (v: SpeechSynthesisVoice) => /premwadee/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /niwat/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /natural|neural/i.test(v.name),
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase() === 'th-th',
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase().startsWith('th'),
+        ];
+
+        for (const ranker of fastRankings) {
+          const match = thaiVoices.find(ranker);
+          if (match) {
+            this.bestThaiVoice = match;
+            break;
+          }
+        }
+      }
+
+      if (!this.bestThaiVoice && thaiVoices.length > 0) {
+        this.bestThaiVoice = thaiVoices[0];
+      }
+    }
+
+    // --- Select Best English Voice on Desktop ---
+    const englishVoices = this.voices.filter(v => {
+      const lang = (v.lang || '').toLowerCase();
+      return lang.startsWith('en');
+    });
+
+    if (englishVoices.length > 0) {
+      if (this.voiceMode === 'natural') {
+        const naturalEnRankings = [
+          (v: SpeechSynthesisVoice) => /natural|neural/i.test(v.name) && /us|united states/i.test(v.lang + v.name),
+          (v: SpeechSynthesisVoice) => /jenny|aria|guy/i.test(v.name) && /natural|online/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /natural|neural/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /google.*us.*english/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /samantha|siri|alex/i.test(v.name),
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase() === 'en-us',
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase().startsWith('en'),
+        ];
+        for (const ranker of naturalEnRankings) {
+          const match = englishVoices.find(ranker);
+          if (match) {
+            this.bestEnglishVoice = match;
+            break;
+          }
+        }
+      } else {
+        const fastEnRankings = [
+          (v: SpeechSynthesisVoice) => v.localService && /google.*us.*english/i.test(v.name),
+          (v: SpeechSynthesisVoice) => v.localService && /samantha|siri|alex/i.test(v.name),
+          (v: SpeechSynthesisVoice) => v.localService && (v.lang || '').toLowerCase().startsWith('en'),
+          (v: SpeechSynthesisVoice) => !/online/i.test(v.name) && (v.lang || '').toLowerCase().startsWith('en'),
+          (v: SpeechSynthesisVoice) => /jenny|aria|guy/i.test(v.name),
+          (v: SpeechSynthesisVoice) => /natural|neural/i.test(v.name),
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase() === 'en-us',
+          (v: SpeechSynthesisVoice) => (v.lang || '').toLowerCase().startsWith('en'),
+        ];
+        for (const ranker of fastEnRankings) {
+          const match = englishVoices.find(ranker);
+          if (match) {
+            this.bestEnglishVoice = match;
+            break;
+          }
+        }
+      }
+
+      if (!this.bestEnglishVoice && englishVoices.length > 0) {
+        this.bestEnglishVoice = englishVoices[0];
+      }
+    }
+  }
+
+  public getActiveVoiceName(lang: Language): string {
+    if (!isDesktopPlatform()) {
+      return 'Native System Default';
+    }
+    const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+    return voice ? `${voice.name} (${voice.lang})` : 'Default Voice';
   }
 
   private getAudioContext(): AudioContext | null {
@@ -424,42 +636,143 @@ class AudioService {
     });
   }
 
-  // Speak letter/phonetic using Web Speech API
-  speakChar(char: string, lang: Language) {
-    if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
+  // Dispatch utterance immediately with 0ms latency
+  private dispatchUtterance(utterance: SpeechSynthesisUtterance, cancelPrevious: boolean = true) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
-      window.speechSynthesis.cancel();
-
-      let textToSpeak = char;
-      if (lang === 'th' && THAI_LETTER_PHONETICS[char]) {
-        textToSpeak = THAI_LETTER_PHONETICS[char];
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
       }
-
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
-      utterance.rate = 1.1;
-      utterance.pitch = 1.15;
-
+      if (cancelPrevious) {
+        window.speechSynthesis.cancel();
+      }
       window.speechSynthesis.speak(utterance);
     } catch {
       // Ignore
     }
   }
 
-  // Speak full word/phrase upon completion
+  // Speak snappy spelling sound while typing characters inside a word (e.g. "กอ", "อา", "งอ")
+  speakSpellingChar(char: string, lang: Language) {
+    if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      let textToSpeak = (char || '').trim();
+      if (!textToSpeak) return;
+
+      if (lang === 'th') {
+        if (THAI_SPELLING_PHONETICS[textToSpeak]) {
+          textToSpeak = THAI_SPELLING_PHONETICS[textToSpeak];
+        } else if (THAI_LETTER_PHONETICS[textToSpeak]) {
+          textToSpeak = THAI_LETTER_PHONETICS[textToSpeak];
+        }
+      } else {
+        textToSpeak = textToSpeak.toUpperCase();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+
+      if (isDesktopPlatform()) {
+        if (!this.bestThaiVoice && !this.bestEnglishVoice) {
+          this.updateBestVoices();
+        }
+        const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+        if (voice) {
+          utterance.voice = voice;
+        }
+        utterance.rate = 1.25; // Fast and snappy for typing rhythm
+        utterance.pitch = 1.08;
+      } else {
+        // Mobile (Android / iOS): Native default behavior 100%
+        utterance.rate = 1.2;
+        utterance.pitch = 1.15;
+      }
+
+      this.dispatchUtterance(utterance, true);
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Speak full phonetic letter sound for single-letter stages (e.g. "ก ไก่", "สะหร่ะ อา", "ดอเด็ก")
+  speakChar(char: string, lang: Language) {
+    if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      let textToSpeak = (char || '').trim();
+      if (!textToSpeak) return;
+
+      if (lang === 'th') {
+        if (THAI_LETTER_PHONETICS[textToSpeak]) {
+          textToSpeak = THAI_LETTER_PHONETICS[textToSpeak];
+        }
+      } else {
+        textToSpeak = textToSpeak.toUpperCase();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+
+      if (isDesktopPlatform()) {
+        if (!this.bestThaiVoice && !this.bestEnglishVoice) {
+          this.updateBestVoices();
+        }
+        const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+        if (voice) {
+          utterance.voice = voice;
+        }
+        utterance.rate = 1.05;
+        utterance.pitch = 1.08;
+      } else {
+        // Mobile (Android / iOS): Native default behavior 100%
+        utterance.rate = 1.1;
+        utterance.pitch = 1.15;
+      }
+
+      this.dispatchUtterance(utterance, true);
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Speak full word/phrase upon completion (immediate instant trigger)
   speakWord(word: string, lang: Language) {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     try {
-      window.speechSynthesis.cancel();
+      let textToSpeak = (word || '').trim();
+      if (!textToSpeak) return;
 
-      const utterance = new SpeechSynthesisUtterance(word);
+      if (lang === 'th') {
+        // If single character in Thai, use full phonetic description (e.g. ก ไก่, สะหร่ะ อา)
+        if (textToSpeak.length === 1 && THAI_LETTER_PHONETICS[textToSpeak]) {
+          textToSpeak = THAI_LETTER_PHONETICS[textToSpeak];
+        }
+        // Normalize unicode NFC and remove invisible zero-width characters
+        textToSpeak = textToSpeak.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '');
+      }
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.1;
 
-      window.speechSynthesis.speak(utterance);
+      if (isDesktopPlatform()) {
+        if (!this.bestThaiVoice && !this.bestEnglishVoice) {
+          this.updateBestVoices();
+        }
+        const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+        if (voice) {
+          utterance.voice = voice;
+        }
+        utterance.rate = 1.05; // Crisp and immediate
+        utterance.pitch = 1.05;
+      } else {
+        // Mobile (Android / iOS): Native default behavior 100%
+        utterance.rate = 1.05;
+        utterance.pitch = 1.1;
+      }
+
+      this.dispatchUtterance(utterance, true);
     } catch {
       // Ignore
     }
