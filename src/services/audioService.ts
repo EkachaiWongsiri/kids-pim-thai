@@ -657,7 +657,7 @@ class AudioService {
     return trimmed.toUpperCase();
   }
 
-  // Helper: Convert word into phonetic spelling tokens (e.g. "กาง" -> ["กอ", "อา", "งอ"])
+  // Helper: Convert word into phonetic spelling tokens (e.g. "ปลา" -> ["ปอ", "ลอ", "อา"])
   public getSpellingTokens(word: string, lang: Language): string[] {
     const trimmed = (word || '').trim();
     if (!trimmed) return [];
@@ -668,8 +668,58 @@ class AudioService {
     return Array.from(trimmed.toUpperCase()).filter(c => /[A-Z0-9]/.test(c));
   }
 
-  // Preloaded stage IDs cache
+  // Helper: Construct complete spelling phrase (e.g. "ปอ ลอ อา ปลา", "นอ อา นา", "B I R D BIRD")
+  public getWordSpellingPhrase(word: string, lang: Language): string {
+    let wordText = (word || '').trim();
+    if (lang === 'th') {
+      wordText = wordText.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '');
+    }
+    if (!wordText) return '';
+
+    if (wordText.length === 1) {
+      // Single character mode (Stages 1-4) -> full letter description (e.g. "ดอเด็ก", "ก ไก่")
+      return this.getLetterPhonetic(wordText, lang);
+    }
+
+    const tokens = this.getSpellingTokens(wordText, lang);
+    if (tokens.length > 0) {
+      // Fluid, natural connected spelling without awkward long gaps: "ปอ ลอ อา ปลา"
+      return `${tokens.join(' ')} ${wordText}`;
+    }
+    return wordText;
+  }
+
+  // Preloaded caches for instant 0ms trigger
   private preloadedStageIds: Set<string> = new Set();
+  private preparedPhrasesCache: Map<string, string> = new Map();
+  private preparedUtterancesCache: Map<string, SpeechSynthesisUtterance> = new Map();
+
+  // Pre-fetch & prepare TTS utterance as soon as a word appears/spawns on screen
+  public prepareWordSpelling(word: string, lang: Language) {
+    if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      const phrase = this.getWordSpellingPhrase(word, lang);
+      if (!phrase) return;
+
+      const cacheKey = `${lang}:${word}`;
+      this.preparedPhrasesCache.set(cacheKey, phrase);
+
+      if (isDesktopPlatform()) {
+        if (!this.bestThaiVoice && !this.bestEnglishVoice) {
+          this.updateBestVoices();
+        }
+        const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+        const utterance = new SpeechSynthesisUtterance(phrase);
+        utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+        if (voice) utterance.voice = voice;
+        utterance.rate = 1.2;
+        utterance.pitch = 1.05;
+        this.preparedUtterancesCache.set(cacheKey, utterance);
+      }
+    } catch {
+      // Ignore
+    }
+  }
 
   // Pre-warm Web Speech API engine & Web Audio context to eliminate cold-start lag
   public async prewarmSpeechEngine(lang: Language = 'th'): Promise<void> {
@@ -707,10 +757,10 @@ class AudioService {
       const stageKey = String(stage.id);
       await this.prewarmSpeechEngine(stage.language);
 
-      // Pre-cache spelling representations for all words in stage
+      // Pre-cache spelling representations & pre-warm all words in stage
       const words = stage.words || [];
       for (const w of words) {
-        this.getSpellingTokens(w, stage.language);
+        this.prepareWordSpelling(w, stage.language);
       }
 
       this.preloadedStageIds.add(stageKey);
@@ -830,7 +880,7 @@ class AudioService {
     }
   }
 
-  // Speak word completion with single-utterance zero-delay chaining (e.g. "ปอ ลอ อา ... ปลา" or "กอ อา งอ ... กาง")
+  // Speak word completion immediately upon typing the final character (e.g. "ปอ ลอ อา ปลา")
   speakWordCompletion(
     finalChar: string,
     word: string,
@@ -847,52 +897,45 @@ class AudioService {
 
       if (!wordText) return;
 
+      const cacheKey = `${lang}:${wordText}`;
       let phraseToSpeak = '';
 
       if (wordText.length === 1) {
         // Single letter word (Stages 1-4) -> full phonetic letter sound (e.g. "ดอเด็ก", "ก ไก่")
         phraseToSpeak = this.getLetterPhonetic(wordText, lang);
       } else if (spellingMode === 'snappy') {
-        // Snappy Finale Mode: e.g. "อา ... ดา" or "งอ ... กาง" or "D ... BIRD"
+        // Snappy Finale Mode: e.g. "อา ดา" or "งอ กาง" or "D BIRD"
         const charPhonetic = this.getSpellingPhonetic(finalChar, lang);
-        if (charPhonetic) {
-          phraseToSpeak = `${charPhonetic} ... ${wordText}`;
-        } else {
-          phraseToSpeak = wordText;
-        }
+        phraseToSpeak = charPhonetic ? `${charPhonetic} ${wordText}` : wordText;
       } else {
-        // Full Spelling Mode (Default): e.g. "ปอ ลอ อา ... ปลา", "นอ อา ... นา", "B I R D ... BIRD"
-        const tokens = this.getSpellingTokens(wordText, lang);
-        if (tokens.length > 0) {
-          phraseToSpeak = `${tokens.join(' ')} ... ${wordText}`;
-        } else {
-          phraseToSpeak = wordText;
-        }
+        // Full Spelling Mode (Default): e.g. "ปอ ลอ อา ปลา", "นอ อา นา", "B I R D BIRD"
+        phraseToSpeak = this.preparedPhrasesCache.get(cacheKey) || this.getWordSpellingPhrase(wordText, lang);
       }
 
       if (isDesktopPlatform()) {
+        // Desktop PC (with best voice selection)
         if (!this.bestThaiVoice && !this.bestEnglishVoice) {
           this.updateBestVoices();
         }
-      }
-
-      const voice = isDesktopPlatform()
-        ? (lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice)
-        : null;
-
-      const utterance = new SpeechSynthesisUtterance(phraseToSpeak);
-      utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
-      if (voice) utterance.voice = voice;
-
-      if (isDesktopPlatform()) {
-        utterance.rate = 1.15; // Smooth, cheerful, clear cadence
+        const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+        const cachedUtterance = this.preparedUtterancesCache.get(cacheKey);
+        const utterance = cachedUtterance || new SpeechSynthesisUtterance(phraseToSpeak);
+        utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+        if (voice) utterance.voice = voice;
+        utterance.rate = 1.2; // Natural, fluid rhythm without awkward long pauses: "ปอ ลอ อา ปลา"
         utterance.pitch = 1.05;
-      } else {
-        utterance.rate = 1.1;
-        utterance.pitch = 1.15;
-      }
 
-      this.dispatchUtterance(utterance, true);
+        this.dispatchUtterance(utterance, true);
+      } else {
+        // Mobile (Android / iOS): Native platform default voice behavior 100%
+        // but speaks the full spelling phrase ("ปอ ลอ อา ปลา")
+        const utterance = new SpeechSynthesisUtterance(phraseToSpeak);
+        utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+        utterance.rate = 1.15;
+        utterance.pitch = 1.12;
+
+        this.dispatchUtterance(utterance, true);
+      }
     } catch (e) {
       console.warn('speakWordCompletion error:', e);
     }

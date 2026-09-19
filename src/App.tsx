@@ -622,6 +622,7 @@ export function App() {
           };
 
           words.push(newWord);
+          audioService.prepareWordSpelling(newWord.text, curStage.language);
           updateTargetChar();
 
           const baseDelay = 3000 / Math.max(curSpeedMult, 0.2);
