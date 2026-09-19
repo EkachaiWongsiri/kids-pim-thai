@@ -725,7 +725,7 @@ class AudioService {
   }
 
   // Preview / test sample audio for parents and kids before starting stage
-  public previewSampleVoice(stage: Stage, spellingMode: SpellingMode = 'snappy') {
+  public previewSampleVoice(stage: Stage, spellingMode: SpellingMode = 'full') {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       const sampleWord = stage.words && stage.words.length > 0 ? stage.words[0] : (stage.language === 'th' ? 'ก' : 'A');
@@ -830,12 +830,12 @@ class AudioService {
     }
   }
 
-  // Speak word completion with single-utterance zero-delay chaining (e.g. "อา ... ดา" or "กอ อา งอ ... กาง")
+  // Speak word completion with single-utterance zero-delay chaining (e.g. "ปอ ลอ อา ... ปลา" or "กอ อา งอ ... กาง")
   speakWordCompletion(
     finalChar: string,
     word: string,
     lang: Language,
-    spellingMode: SpellingMode = 'snappy'
+    spellingMode: SpellingMode = 'full'
   ) {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
@@ -852,19 +852,19 @@ class AudioService {
       if (wordText.length === 1) {
         // Single letter word (Stages 1-4) -> full phonetic letter sound (e.g. "ดอเด็ก", "ก ไก่")
         phraseToSpeak = this.getLetterPhonetic(wordText, lang);
-      } else if (spellingMode === 'full') {
-        // Full Spelling Mode: e.g. "ดอ อา ... ดา" or "กอ อา งอ ... กาง" or "B I R D ... BIRD"
-        const tokens = this.getSpellingTokens(wordText, lang);
-        if (tokens.length > 0) {
-          phraseToSpeak = `${tokens.join(' ')} ... ${wordText}`;
-        } else {
-          phraseToSpeak = wordText;
-        }
-      } else {
+      } else if (spellingMode === 'snappy') {
         // Snappy Finale Mode: e.g. "อา ... ดา" or "งอ ... กาง" or "D ... BIRD"
         const charPhonetic = this.getSpellingPhonetic(finalChar, lang);
         if (charPhonetic) {
           phraseToSpeak = `${charPhonetic} ... ${wordText}`;
+        } else {
+          phraseToSpeak = wordText;
+        }
+      } else {
+        // Full Spelling Mode (Default): e.g. "ปอ ลอ อา ... ปลา", "นอ อา ... นา", "B I R D ... BIRD"
+        const tokens = this.getSpellingTokens(wordText, lang);
+        if (tokens.length > 0) {
+          phraseToSpeak = `${tokens.join(' ')} ... ${wordText}`;
         } else {
           phraseToSpeak = wordText;
         }

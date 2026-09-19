@@ -74,7 +74,7 @@ const DEFAULT_SETTINGS: SavedSettings = {
   targetWordsCount: 10,
   maxConcurrentWords: 4,
   voiceMode: 'fast',
-  spellingMode: 'snappy',
+  spellingMode: 'full',
 };
 
 // Helper: Convert CustomStage to playable Stage

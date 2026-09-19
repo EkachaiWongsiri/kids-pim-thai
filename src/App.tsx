@@ -35,7 +35,7 @@ export function App() {
   const [isVoiceMuted, setIsVoiceMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('fast');
-  const [spellingMode, setSpellingMode] = useState<SpellingMode>('snappy');
+  const [spellingMode, setSpellingMode] = useState<SpellingMode>('full');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
 
@@ -191,7 +191,7 @@ export function App() {
     setVoiceMode(initialVoiceMode);
     audioService.setVoiceMode(initialVoiceMode);
 
-    const initialSpellingMode = saved.spellingMode || 'snappy';
+    const initialSpellingMode = saved.spellingMode || 'full';
     setSpellingMode(initialSpellingMode);
 
     audioService.isSfxMuted = !saved.sfxEnabled;

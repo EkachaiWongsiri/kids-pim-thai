@@ -18,7 +18,7 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
   guiLang,
   onStart,
   speedMultiplier,
-  spellingMode = 'snappy',
+  spellingMode = 'full',
 }) => {
   const t = TRANSLATIONS[guiLang];
   const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
