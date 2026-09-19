@@ -16,7 +16,7 @@ import { THAI_STAGES, ENGLISH_STAGES } from './data/stagesData';
 import { Language, Stage, FallingWord, Particle, LaserBeam, FloatingText, GameStats } from './types/game';
 import { GuiLanguage, TRANSLATIONS } from './data/i18n';
 import { audioService } from './services/audioService';
-import { StorageService, VoiceMode } from './services/storageService';
+import { StorageService, VoiceMode, customStageToGameStage } from './services/storageService';
 import { AlertTriangle } from 'lucide-react';
 
 export function App() {
@@ -192,7 +192,20 @@ export function App() {
     audioService.isBgmMuted = !saved.bgmEnabled;
     audioService.setBgmSpeed(saved.speedMultiplier);
 
-    const initialStage = THAI_STAGES.find((s) => s.id === saved.lastPlayedStageId) || THAI_STAGES[0];
+    let initialStage: Stage | undefined = THAI_STAGES.find((s) => String(s.id) === String(saved.lastPlayedStageId));
+    if (!initialStage) {
+      initialStage = ENGLISH_STAGES.find((s) => String(s.id) === String(saved.lastPlayedStageId));
+    }
+    if (!initialStage) {
+      const customStages = StorageService.getCustomStages();
+      const matchCustom = customStages.find((s) => String(s.id) === String(saved.lastPlayedStageId));
+      if (matchCustom) {
+        initialStage = customStageToGameStage(matchCustom);
+      }
+    }
+    if (!initialStage) {
+      initialStage = THAI_STAGES[0];
+    }
     setCurrentStage(initialStage);
     setLanguage(initialStage.language);
   }, []);
@@ -753,8 +766,18 @@ export function App() {
   };
 
   const handleNextStage = () => {
+    if (currentStage.category === 'custom') {
+      const customStages = StorageService.getCustomStages();
+      const currentIndex = customStages.findIndex((s) => String(s.id) === String(currentStage.id));
+      if (currentIndex !== -1 && currentIndex < customStages.length - 1) {
+        initStage(customStageToGameStage(customStages[currentIndex + 1]), undefined, false);
+      } else {
+        setIsStageSelectOpen(true);
+      }
+      return;
+    }
     const stageList = language === 'th' ? THAI_STAGES : ENGLISH_STAGES;
-    const currentIndex = stageList.findIndex((s) => s.id === currentStage.id);
+    const currentIndex = stageList.findIndex((s) => String(s.id) === String(currentStage.id));
     if (currentIndex !== -1 && currentIndex < stageList.length - 1) {
       initStage(stageList[currentIndex + 1], undefined, false);
     } else {
@@ -768,8 +791,15 @@ export function App() {
   };
 
   const stageList = language === 'th' ? THAI_STAGES : ENGLISH_STAGES;
-  const currentStageIndex = stageList.findIndex((s) => s.id === currentStage.id);
-  const hasNextStage = currentStageIndex !== -1 && currentStageIndex < stageList.length - 1;
+  let hasNextStage = false;
+  if (currentStage.category === 'custom') {
+    const customStages = StorageService.getCustomStages();
+    const cIdx = customStages.findIndex((s) => String(s.id) === String(currentStage.id));
+    hasNextStage = cIdx !== -1 && cIdx < customStages.length - 1;
+  } else {
+    const currentStageIndex = stageList.findIndex((s) => String(s.id) === String(currentStage.id));
+    hasNextStage = currentStageIndex !== -1 && currentStageIndex < stageList.length - 1;
+  }
 
   const currentStats: GameStats = {
     score,
@@ -906,6 +936,7 @@ export function App() {
         onSelectStage={(stage) => initStage(stage, undefined, false)}
         currentStageId={currentStage.id}
         guiLang={guiLang}
+        onOpenCreateCustomStage={() => setIsCustomWordsOpen(true)}
       />
 
       <CustomWordModal

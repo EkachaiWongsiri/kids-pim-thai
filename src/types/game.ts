@@ -45,7 +45,7 @@ export interface FloatingText {
 }
 
 export interface Stage {
-  id: number;
+  id: number | string;
   title: string;
   subtitle: string;
   description: string;
@@ -55,6 +55,20 @@ export interface Stage {
   targetCount: number; // How many words to clear stage
   speedBase: number;
   icon?: string;
+}
+
+export interface CustomStage {
+  id: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  language: Language;
+  words: string[];
+  icon?: string;
+  speedBase?: number;
+  targetCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GameStats {

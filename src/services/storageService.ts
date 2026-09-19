@@ -1,4 +1,4 @@
-import { Language } from '../types/game';
+import { Language, Stage, CustomStage } from '../types/game';
 
 export type VoiceMode = 'fast' | 'natural';
 
@@ -8,14 +8,14 @@ export interface SavedSettings {
   bgmEnabled: boolean;
   keyboardVisible: boolean;
   speedMultiplier: number;
-  lastPlayedStageId: number;
+  lastPlayedStageId: number | string;
   targetWordsCount: number;
   maxConcurrentWords: number;
   voiceMode: VoiceMode;
 }
 
 export interface StageScore {
-  stageId: number;
+  stageId: number | string;
   highScore: number;
   maxCombo: number;
   accuracy: number;
@@ -40,7 +40,8 @@ export interface ExportData {
   settings?: SavedSettings;
   customWords?: string[];
   wordSets?: WordSet[];
-  scores?: Record<number, StageScore>;
+  customStages?: CustomStage[];
+  scores?: Record<string, StageScore>;
 }
 
 // MXIA Game Standard Namespace: mxia:game:{game-id}:v{schema-version}:{key}
@@ -50,6 +51,7 @@ const STORAGE_KEYS = {
   CUSTOM_WORDS: 'mxia:game:kids-pim-thai:v1:custom_words',
   TOTAL_WORDS: 'mxia:game:kids-pim-thai:v1:total_words',
   WORD_SETS: 'mxia:game:kids-pim-thai:v1:word_sets',
+  CUSTOM_STAGES: 'mxia:game:kids-pim-thai:v1:custom_stages',
 };
 
 // Legacy keys for automatic migration
@@ -71,6 +73,22 @@ const DEFAULT_SETTINGS: SavedSettings = {
   maxConcurrentWords: 4,
   voiceMode: 'fast',
 };
+
+// Helper: Convert CustomStage to playable Stage
+export function customStageToGameStage(cs: CustomStage): Stage {
+  return {
+    id: cs.id,
+    title: cs.title,
+    subtitle: cs.subtitle || (cs.language === 'th' ? `โจทย์คำศัพท์ ${cs.words.length} คำ` : `Custom set with ${cs.words.length} words`),
+    description: cs.description || (cs.language === 'th' ? 'ฝึกพิมพ์คำศัพท์ที่คุณหรือผู้ปกครองสร้างไว้' : 'Practice your customized vocabulary list'),
+    language: cs.language,
+    category: 'custom',
+    words: cs.words && cs.words.length > 0 ? cs.words : ['สวัสดี', 'คนเก่ง'],
+    targetCount: cs.targetCount || Math.min(Math.max(cs.words.length * 2, 8), 20),
+    speedBase: cs.speedBase || 0.75,
+    icon: cs.icon || '📝',
+  };
+}
 
 export class StorageService {
   // 1. Settings
@@ -103,7 +121,7 @@ export class StorageService {
   }
 
   // 2. Scores
-  static getScores(): Record<number, StageScore> {
+  static getScores(): Record<string, StageScore> {
     try {
       let data = localStorage.getItem(STORAGE_KEYS.SCORES);
       if (!data) {
@@ -124,9 +142,10 @@ export class StorageService {
   static saveStageScore(score: StageScore) {
     try {
       const scores = this.getScores();
-      const existing = scores[score.stageId];
+      const key = String(score.stageId);
+      const existing = scores[key];
       if (!existing || score.highScore > existing.highScore) {
-        scores[score.stageId] = score;
+        scores[key] = score;
         localStorage.setItem(STORAGE_KEYS.SCORES, JSON.stringify(scores));
       }
     } catch (e) {
@@ -134,12 +153,11 @@ export class StorageService {
     }
   }
 
-  // 3. Custom Words (Active Bank)
+  // 3. Custom Words (Active Bank - Legacy support)
   static getCustomWords(): string[] {
     try {
       let data = localStorage.getItem(STORAGE_KEYS.CUSTOM_WORDS);
       if (!data) {
-        // Migrate from legacy key
         const legacyData = localStorage.getItem(LEGACY_KEYS.CUSTOM_WORDS);
         if (legacyData) {
           data = legacyData;
@@ -161,7 +179,172 @@ export class StorageService {
     }
   }
 
-  // 4. Saved Word Sets (Multi-Preset Bank)
+  // 4. Custom Stages (Unlimited Multi-Stage Bank for Parents)
+  static getCustomStages(): CustomStage[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CUSTOM_STAGES);
+      if (data) {
+        return JSON.parse(data);
+      }
+
+      // Auto-Migration: Convert existing WordSets or CustomWords into CustomStages
+      const migratedStages: CustomStage[] = [];
+      const legacyWordSets = this.getSavedWordSets();
+
+      if (legacyWordSets && legacyWordSets.length > 0) {
+        for (const set of legacyWordSets) {
+          migratedStages.push({
+            id: set.id.startsWith('stage_') ? set.id : `stage_${set.id}`,
+            title: set.name,
+            subtitle: `ชุดคำศัพท์ ${set.words.length} คำ`,
+            description: 'สร้างโดยผู้ปกครอง / คุณครู',
+            language: set.language,
+            words: set.words,
+            icon: '📝',
+            speedBase: 0.75,
+            targetCount: Math.min(Math.max(set.words.length * 2, 8), 20),
+            createdAt: set.createdAt || new Date().toISOString(),
+            updatedAt: set.updatedAt || new Date().toISOString(),
+          });
+        }
+      }
+
+      // If no word sets existed, check active custom_words
+      if (migratedStages.length === 0) {
+        const activeWords = this.getCustomWords();
+        if (activeWords && activeWords.length > 0) {
+          const hasThai = activeWords.some((w) => /[\u0E00-\u0E7F]/.test(w));
+          migratedStages.push({
+            id: 'stage_custom_initial',
+            title: hasThai ? 'คำศัพท์เตรียมฝึกชุดที่ 1' : 'Custom Word Practice Set 1',
+            subtitle: `${activeWords.length} คำศัพท์`,
+            description: 'ฝึกพิมพ์คำศัพท์ที่คุณกำหนดเอง',
+            language: hasThai ? 'th' : 'en',
+            words: activeWords,
+            icon: '🌟',
+            speedBase: 0.75,
+            targetCount: Math.min(Math.max(activeWords.length * 2, 8), 20),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      if (migratedStages.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_STAGES, JSON.stringify(migratedStages));
+      }
+
+      return migratedStages;
+    } catch (e) {
+      console.warn('StorageService.getCustomStages error:', e);
+      return [];
+    }
+  }
+
+  static saveCustomStage(
+    stage: Omit<CustomStage, 'id' | 'createdAt' | 'updatedAt'> & { id?: string; createdAt?: string }
+  ): CustomStage {
+    try {
+      const stages = this.getCustomStages();
+      const now = new Date().toISOString();
+      let savedStage: CustomStage;
+
+      if (stage.id) {
+        const index = stages.findIndex((s) => s.id === stage.id);
+        if (index !== -1) {
+          savedStage = {
+            ...stages[index],
+            title: stage.title.trim(),
+            subtitle: stage.subtitle?.trim() || `โจทย์คำศัพท์ ${stage.words.length} คำ`,
+            description: stage.description?.trim() || 'ฝึกพิมพ์คำศัพท์ที่คุณหรือผู้ปกครองสร้างไว้',
+            language: stage.language,
+            words: stage.words,
+            icon: stage.icon || '📝',
+            speedBase: stage.speedBase || 0.75,
+            targetCount: stage.targetCount || Math.min(Math.max(stage.words.length * 2, 8), 20),
+            updatedAt: now,
+          };
+          stages[index] = savedStage;
+        } else {
+          savedStage = {
+            id: stage.id,
+            title: stage.title.trim(),
+            subtitle: stage.subtitle?.trim() || `โจทย์คำศัพท์ ${stage.words.length} คำ`,
+            description: stage.description?.trim() || 'ฝึกพิมพ์คำศัพท์ที่คุณหรือผู้ปกครองสร้างไว้',
+            language: stage.language,
+            words: stage.words,
+            icon: stage.icon || '📝',
+            speedBase: stage.speedBase || 0.75,
+            targetCount: stage.targetCount || Math.min(Math.max(stage.words.length * 2, 8), 20),
+            createdAt: stage.createdAt || now,
+            updatedAt: now,
+          };
+          stages.push(savedStage);
+        }
+      } else {
+        const newId = 'stage_custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        savedStage = {
+          id: newId,
+          title: stage.title.trim(),
+          subtitle: stage.subtitle?.trim() || `โจทย์คำศัพท์ ${stage.words.length} คำ`,
+          description: stage.description?.trim() || 'ฝึกพิมพ์คำศัพท์ที่คุณหรือผู้ปกครองสร้างไว้',
+          language: stage.language,
+          words: stage.words,
+          icon: stage.icon || '📝',
+          speedBase: stage.speedBase || 0.75,
+          targetCount: stage.targetCount || Math.min(Math.max(stage.words.length * 2, 8), 20),
+          createdAt: now,
+          updatedAt: now,
+        };
+        stages.push(savedStage);
+      }
+
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_STAGES, JSON.stringify(stages));
+
+      // Also sync active custom words
+      this.saveCustomWords(savedStage.words);
+
+      return savedStage;
+    } catch (e) {
+      console.warn('StorageService.saveCustomStage error:', e);
+      throw e;
+    }
+  }
+
+  static deleteCustomStage(stageId: string) {
+    try {
+      const stages = this.getCustomStages().filter((s) => s.id !== stageId);
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_STAGES, JSON.stringify(stages));
+    } catch (e) {
+      console.warn('StorageService.deleteCustomStage error:', e);
+    }
+  }
+
+  static duplicateCustomStage(stageId: string): CustomStage | null {
+    try {
+      const stages = this.getCustomStages();
+      const source = stages.find((s) => s.id === stageId);
+      if (!source) return null;
+
+      const copy: Omit<CustomStage, 'id' | 'createdAt' | 'updatedAt'> = {
+        title: `${source.title} (สำเนา)`,
+        subtitle: source.subtitle,
+        description: source.description,
+        language: source.language,
+        words: [...source.words],
+        icon: source.icon,
+        speedBase: source.speedBase,
+        targetCount: source.targetCount,
+      };
+
+      return this.saveCustomStage(copy);
+    } catch (e) {
+      console.warn('StorageService.duplicateCustomStage error:', e);
+      return null;
+    }
+  }
+
+  // 5. Saved Word Sets (Legacy backward compatibility)
   static getSavedWordSets(): WordSet[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.WORD_SETS);
@@ -213,6 +396,16 @@ export class StorageService {
       }
 
       localStorage.setItem(STORAGE_KEYS.WORD_SETS, JSON.stringify(sets));
+
+      // Also mirror as a CustomStage
+      this.saveCustomStage({
+        id: `stage_${updatedSet.id}`,
+        title: updatedSet.name,
+        language: updatedSet.language,
+        words: updatedSet.words,
+        icon: '📝',
+      });
+
       return updatedSet;
     } catch (e) {
       console.warn('StorageService.saveWordSet error:', e);
@@ -224,12 +417,14 @@ export class StorageService {
     try {
       const sets = this.getSavedWordSets().filter((s) => s.id !== setId);
       localStorage.setItem(STORAGE_KEYS.WORD_SETS, JSON.stringify(sets));
+      this.deleteCustomStage(`stage_${setId}`);
+      this.deleteCustomStage(setId);
     } catch (e) {
       console.warn('StorageService.deleteWordSet error:', e);
     }
   }
 
-  // 5. Total Words Typed Counter
+  // 6. Total Words Typed Counter
   static incrementTotalWordsTyped() {
     try {
       let current = localStorage.getItem(STORAGE_KEYS.TOTAL_WORDS);
@@ -259,7 +454,7 @@ export class StorageService {
     }
   }
 
-  // 6. Export Package (`kids-pim-thai.json`)
+  // 7. Export Package (`kids-pim-thai.json`)
   static exportPackage(options: {
     includeSettings: boolean;
     includeCustomWords: boolean;
@@ -277,9 +472,13 @@ export class StorageService {
     }
     if (options.includeCustomWords) {
       pkg.customWords = this.getCustomWords();
+      pkg.customStages = this.getCustomStages();
     }
     if (options.includeWordSets) {
       pkg.wordSets = this.getSavedWordSets();
+      if (!pkg.customStages) {
+        pkg.customStages = this.getCustomStages();
+      }
     }
     if (options.includeScores) {
       pkg.scores = this.getScores();
@@ -288,7 +487,7 @@ export class StorageService {
     return pkg;
   }
 
-  // 7. Import Package with Conflict Resolution ('overwrite' | 'merge' | 'skip')
+  // 8. Import Package with Conflict Resolution ('overwrite' | 'merge' | 'skip')
   static importPackage(
     pkg: ExportData,
     mode: 'overwrite' | 'merge' | 'skip'
@@ -326,44 +525,63 @@ export class StorageService {
         }
       }
 
-      // Import Word Sets
-      if (pkg.wordSets && Array.isArray(pkg.wordSets)) {
-        const currentSets = this.getSavedWordSets();
-        if (mode === 'overwrite') {
-          localStorage.setItem(STORAGE_KEYS.WORD_SETS, JSON.stringify(pkg.wordSets));
-          importedCount += pkg.wordSets.length;
-        } else if (mode === 'merge') {
-          // Merge and re-key if duplicate ID
-          const existingIds = new Set(currentSets.map((s) => s.id));
-          const updatedSets = [...currentSets];
+      // Import Custom Stages (or legacy Word Sets)
+      const stagesToImport: CustomStage[] = [];
+      if (pkg.customStages && Array.isArray(pkg.customStages)) {
+        stagesToImport.push(...pkg.customStages);
+      } else if (pkg.wordSets && Array.isArray(pkg.wordSets)) {
+        for (const ws of pkg.wordSets) {
+          stagesToImport.push({
+            id: ws.id,
+            title: ws.name,
+            subtitle: `ชุดคำศัพท์ ${ws.words.length} คำ`,
+            description: 'นำเข้าจากไฟล์สำรอง',
+            language: ws.language,
+            words: ws.words,
+            icon: '📝',
+            speedBase: 0.75,
+            targetCount: Math.min(Math.max(ws.words.length * 2, 8), 20),
+            createdAt: ws.createdAt || new Date().toISOString(),
+            updatedAt: ws.updatedAt || new Date().toISOString(),
+          });
+        }
+      }
 
-          for (const newSet of pkg.wordSets) {
-            if (existingIds.has(newSet.id)) {
-              // Re-index / give fresh unique ID
-              const reKeyed: WordSet = {
-                ...newSet,
-                id: 'set_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-                name: `${newSet.name} (นำเข้า)`,
+      if (stagesToImport.length > 0) {
+        const currentStages = this.getCustomStages();
+        if (mode === 'overwrite') {
+          localStorage.setItem(STORAGE_KEYS.CUSTOM_STAGES, JSON.stringify(stagesToImport));
+          importedCount += stagesToImport.length;
+        } else if (mode === 'merge') {
+          const existingIds = new Set(currentStages.map((s) => s.id));
+          const updatedStages = [...currentStages];
+
+          for (const newStage of stagesToImport) {
+            if (existingIds.has(newStage.id)) {
+              const reKeyed: CustomStage = {
+                ...newStage,
+                id: 'stage_custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                title: `${newStage.title} (นำเข้า)`,
               };
-              updatedSets.push(reKeyed);
+              updatedStages.push(reKeyed);
             } else {
-              updatedSets.push(newSet);
-              existingIds.add(newSet.id);
+              updatedStages.push(newStage);
+              existingIds.add(newStage.id);
             }
             importedCount += 1;
           }
-          localStorage.setItem(STORAGE_KEYS.WORD_SETS, JSON.stringify(updatedSets));
+          localStorage.setItem(STORAGE_KEYS.CUSTOM_STAGES, JSON.stringify(updatedStages));
         } else if (mode === 'skip') {
-          const existingIds = new Set(currentSets.map((s) => s.id));
-          const updatedSets = [...currentSets];
-          for (const newSet of pkg.wordSets) {
-            if (!existingIds.has(newSet.id)) {
-              updatedSets.push(newSet);
-              existingIds.add(newSet.id);
+          const existingIds = new Set(currentStages.map((s) => s.id));
+          const updatedStages = [...currentStages];
+          for (const newStage of stagesToImport) {
+            if (!existingIds.has(newStage.id)) {
+              updatedStages.push(newStage);
+              existingIds.add(newStage.id);
               importedCount += 1;
             }
           }
-          localStorage.setItem(STORAGE_KEYS.WORD_SETS, JSON.stringify(updatedSets));
+          localStorage.setItem(STORAGE_KEYS.CUSTOM_STAGES, JSON.stringify(updatedStages));
         }
       }
 
@@ -375,9 +593,8 @@ export class StorageService {
           const currentScores = this.getScores();
           const mergedScores = { ...currentScores };
           for (const [idStr, score] of Object.entries(pkg.scores)) {
-            const id = Number(idStr);
-            if (!mergedScores[id] || score.highScore > mergedScores[id].highScore) {
-              mergedScores[id] = score;
+            if (!mergedScores[idStr] || score.highScore > mergedScores[idStr].highScore) {
+              mergedScores[idStr] = score;
             }
           }
           localStorage.setItem(STORAGE_KEYS.SCORES, JSON.stringify(mergedScores));
@@ -395,3 +612,4 @@ export class StorageService {
     }
   }
 }
+
