@@ -107,6 +107,7 @@ class AudioService {
   public bestEnglishVoice: SpeechSynthesisVoice | null = null;
   public isVoicesLoaded: boolean = false;
   public voiceMode: VoiceMode = 'fast'; // 'fast' (Local 0ms) or 'natural' (AI Online Neural)
+  private activeUtterances: Set<SpeechSynthesisUtterance> = new Set();
 
   // BGM Sequencer state
   private isBgmPlaying: boolean = false;
@@ -645,7 +646,15 @@ class AudioService {
       }
       if (cancelPrevious) {
         window.speechSynthesis.cancel();
+        this.activeUtterances.clear();
       }
+      this.activeUtterances.add(utterance);
+      utterance.onend = () => {
+        this.activeUtterances.delete(utterance);
+      };
+      utterance.onerror = () => {
+        this.activeUtterances.delete(utterance);
+      };
       window.speechSynthesis.speak(utterance);
     } catch {
       // Ignore
@@ -731,6 +740,90 @@ class AudioService {
       }
 
       this.dispatchUtterance(utterance, true);
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Speak the final character's spelling sound followed immediately by the full word
+  speakWordCompletion(finalChar: string, word: string, lang: Language) {
+    if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      // 1. Prepare final char spelling text
+      let charText = (finalChar || '').trim();
+      if (lang === 'th') {
+        if (THAI_SPELLING_PHONETICS[charText]) {
+          charText = THAI_SPELLING_PHONETICS[charText];
+        } else if (THAI_LETTER_PHONETICS[charText]) {
+          charText = THAI_LETTER_PHONETICS[charText];
+        }
+      } else {
+        charText = charText.toUpperCase();
+      }
+
+      // 2. Prepare full word text
+      let wordText = (word || '').trim();
+      if (lang === 'th') {
+        if (wordText.length === 1 && THAI_LETTER_PHONETICS[wordText]) {
+          wordText = THAI_LETTER_PHONETICS[wordText];
+        }
+        wordText = wordText.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '');
+      }
+
+      if (!charText && !wordText) return;
+      if (!charText) {
+        this.speakWord(wordText, lang);
+        return;
+      }
+
+      if (isDesktopPlatform()) {
+        if (!this.bestThaiVoice && !this.bestEnglishVoice) {
+          this.updateBestVoices();
+        }
+      }
+
+      const voice = isDesktopPlatform()
+        ? (lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice)
+        : null;
+
+      // Utterance 1: Final character spelling sound (e.g. "อา", "งอ", "D")
+      const charUtterance = new SpeechSynthesisUtterance(charText);
+      charUtterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+      if (voice) charUtterance.voice = voice;
+      charUtterance.rate = isDesktopPlatform() ? 1.25 : 1.2;
+      charUtterance.pitch = isDesktopPlatform() ? 1.08 : 1.15;
+
+      // Utterance 2: Full word pronunciation (e.g. "ดา", "กาง", "bird")
+      const wordUtterance = new SpeechSynthesisUtterance(wordText);
+      wordUtterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+      if (voice) wordUtterance.voice = voice;
+      wordUtterance.rate = 1.05;
+      wordUtterance.pitch = isDesktopPlatform() ? 1.05 : 1.1;
+
+      // Track active utterances to prevent GC drop
+      this.activeUtterances.add(charUtterance);
+      this.activeUtterances.add(wordUtterance);
+
+      charUtterance.onend = () => {
+        this.activeUtterances.delete(charUtterance);
+      };
+      charUtterance.onerror = () => {
+        this.activeUtterances.delete(charUtterance);
+      };
+      wordUtterance.onend = () => {
+        this.activeUtterances.delete(wordUtterance);
+      };
+      wordUtterance.onerror = () => {
+        this.activeUtterances.delete(wordUtterance);
+      };
+
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(charUtterance);
+      window.speechSynthesis.speak(wordUtterance);
     } catch {
       // Ignore
     }

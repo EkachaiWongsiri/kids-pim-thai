@@ -350,7 +350,7 @@ export function App() {
 
           audioService.playLaserSound();
           audioService.playExplosionSound();
-          audioService.speakWord(targetWord.text, curStage.language);
+          audioService.speakWordCompletion(expectedChar, targetWord.text, curStage.language);
           triggerExplosion(targetWord.x, targetWord.y, targetWord.color);
 
           const newCombo = comboRef.current + 1;
