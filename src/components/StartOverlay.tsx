@@ -1,13 +1,16 @@
-import React from 'react';
-import { Play, Sparkles, Hand, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Sparkles, Hand, Target, Volume2, CheckCircle2, Loader2 } from 'lucide-react';
 import { Stage } from '../types/game';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
+import { audioService } from '../services/audioService';
+import { SpellingMode } from '../services/storageService';
 
 interface StartOverlayProps {
   stage: Stage;
   guiLang: GuiLanguage;
   onStart: () => void;
   speedMultiplier: number;
+  spellingMode?: SpellingMode;
 }
 
 export const StartOverlay: React.FC<StartOverlayProps> = ({
@@ -15,8 +18,41 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
   guiLang,
   onStart,
   speedMultiplier,
+  spellingMode = 'snappy',
 }) => {
   const t = TRANSLATIONS[guiLang];
+  const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsAudioReady(false);
+
+    audioService.preloadStagePhonetics(stage).then(() => {
+      if (isMounted) {
+        setIsAudioReady(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [stage]);
+
+  const handleTestPreview = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPreviewPlaying) return;
+    setIsPreviewPlaying(true);
+    audioService.previewSampleVoice(stage, spellingMode);
+    setTimeout(() => {
+      setIsPreviewPlaying(false);
+    }, 1200);
+  };
+
+  const handleStartGame = () => {
+    audioService.prewarmSpeechEngine(stage.language);
+    onStart();
+  };
 
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn select-none">
@@ -38,12 +74,12 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
         <h2 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight">
           {t.readyTitle}
         </h2>
-        <p className="text-xs md:text-sm text-slate-300 mb-5 max-w-sm">
+        <p className="text-xs md:text-sm text-slate-300 mb-4 max-w-sm">
           {stage.description}
         </p>
 
         {/* Words Preview Pills */}
-        <div className="w-full bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-6 text-left">
+        <div className="w-full bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 mb-4 text-left">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-semibold">
             <span className="flex items-center gap-1">
               <Target className="w-3.5 h-3.5 text-amber-400" />
@@ -71,10 +107,43 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
           </div>
         </div>
 
+        {/* Pre-cached Phonetics Status & Test Voice Action Bar */}
+        <div className="w-full bg-slate-950/50 border border-slate-800/80 rounded-2xl px-3.5 py-2.5 mb-5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-left min-w-0">
+            {isAudioReady ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <Loader2 className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+            )}
+            <div className="truncate">
+              <div className="text-[11px] font-bold text-slate-200 truncate">
+                {isAudioReady ? t.audioStatusReady : t.audioStatusLoading}
+              </div>
+              <div className="text-[10px] text-slate-400">
+                {audioService.getActiveVoiceName(stage.language)}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTestPreview}
+            disabled={isPreviewPlaying}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer shrink-0 ${
+              isPreviewPlaying
+                ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse'
+                : 'bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border-indigo-400/30 hover:border-indigo-400/50'
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5" />
+            <span>{isPreviewPlaying ? t.audioPreviewPlaying : t.btnTestVoice}</span>
+          </button>
+        </div>
+
         {/* Big Glow Play Button */}
         <button
-          onClick={onStart}
-          className="group relative flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 hover:from-amber-300 hover:to-pink-400 text-slate-950 font-black text-lg md:text-xl rounded-2xl shadow-xl shadow-orange-500/30 transition-all duration-300 transform hover:scale-105 active:scale-95 w-full max-w-xs mb-4 cursor-pointer"
+          onClick={handleStartGame}
+          className="group relative flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 hover:from-amber-300 hover:to-pink-400 text-slate-950 font-black text-lg md:text-xl rounded-2xl shadow-xl shadow-orange-500/30 transition-all duration-300 transform hover:scale-105 active:scale-95 w-full max-w-xs mb-3 cursor-pointer"
         >
           <div className="w-8 h-8 rounded-full bg-slate-950 text-amber-400 flex items-center justify-center group-hover:scale-110 transition">
             <Play className="w-5 h-5 fill-current ml-0.5" />

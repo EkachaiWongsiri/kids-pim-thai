@@ -1,5 +1,5 @@
-import { Language } from '../types/game';
-import { VoiceMode } from './storageService';
+import { Language, Stage } from '../types/game';
+import { VoiceMode, SpellingMode } from './storageService';
 
 // Platform Guard: Check if running on Desktop vs Mobile/Tablet
 export function isDesktopPlatform(): boolean {
@@ -637,6 +637,109 @@ class AudioService {
     });
   }
 
+  // Helper: Get phonetic spelling representation of a single character
+  public getSpellingPhonetic(char: string, lang: Language): string {
+    const trimmed = (char || '').trim();
+    if (!trimmed) return '';
+    if (lang === 'th') {
+      return THAI_SPELLING_PHONETICS[trimmed] || THAI_LETTER_PHONETICS[trimmed] || trimmed;
+    }
+    return trimmed.toUpperCase();
+  }
+
+  // Helper: Get full phonetic description of a character (for single-letter stages)
+  public getLetterPhonetic(char: string, lang: Language): string {
+    const trimmed = (char || '').trim();
+    if (!trimmed) return '';
+    if (lang === 'th') {
+      return THAI_LETTER_PHONETICS[trimmed] || trimmed;
+    }
+    return trimmed.toUpperCase();
+  }
+
+  // Helper: Convert word into phonetic spelling tokens (e.g. "กาง" -> ["กอ", "อา", "งอ"])
+  public getSpellingTokens(word: string, lang: Language): string[] {
+    const trimmed = (word || '').trim();
+    if (!trimmed) return [];
+    if (lang === 'th') {
+      const chars = Array.from(trimmed.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, ''));
+      return chars.map(c => this.getSpellingPhonetic(c, 'th')).filter(Boolean);
+    }
+    return Array.from(trimmed.toUpperCase()).filter(c => /[A-Z0-9]/.test(c));
+  }
+
+  // Preloaded stage IDs cache
+  private preloadedStageIds: Set<string> = new Set();
+
+  // Pre-warm Web Speech API engine & Web Audio context to eliminate cold-start lag
+  public async prewarmSpeechEngine(lang: Language = 'th'): Promise<void> {
+    try {
+      this.getAudioContext();
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      if (isDesktopPlatform()) {
+        if (!this.bestThaiVoice && !this.bestEnglishVoice) {
+          this.updateBestVoices();
+        }
+      }
+
+      // Micro-utterance (volume 0.001) to warm the cloud TTS connection / local worker thread
+      const silentUtterance = new SpeechSynthesisUtterance(' ');
+      silentUtterance.volume = 0.001;
+      silentUtterance.rate = 2.0;
+      silentUtterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+      const voice = lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice;
+      if (voice) silentUtterance.voice = voice;
+
+      window.speechSynthesis.speak(silentUtterance);
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Preload and pre-cache all vocabulary and phonetics for a stage
+  public async preloadStagePhonetics(stage: Stage): Promise<{ isReady: boolean; count: number }> {
+    try {
+      const stageKey = String(stage.id);
+      await this.prewarmSpeechEngine(stage.language);
+
+      // Pre-cache spelling representations for all words in stage
+      const words = stage.words || [];
+      for (const w of words) {
+        this.getSpellingTokens(w, stage.language);
+      }
+
+      this.preloadedStageIds.add(stageKey);
+      return { isReady: true, count: words.length };
+    } catch {
+      return { isReady: true, count: 0 };
+    }
+  }
+
+  public isStageReady(stageId: number | string): boolean {
+    return this.preloadedStageIds.has(String(stageId));
+  }
+
+  // Preview / test sample audio for parents and kids before starting stage
+  public previewSampleVoice(stage: Stage, spellingMode: SpellingMode = 'snappy') {
+    if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      const sampleWord = stage.words && stage.words.length > 0 ? stage.words[0] : (stage.language === 'th' ? 'ก' : 'A');
+      if (sampleWord.length === 1) {
+        this.speakChar(sampleWord, stage.language);
+      } else {
+        const lastChar = sampleWord[sampleWord.length - 1];
+        this.speakWordCompletion(lastChar, sampleWord, stage.language, spellingMode);
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
   // Dispatch utterance immediately with 0ms latency
   private dispatchUtterance(utterance: SpeechSynthesisUtterance, cancelPrevious: boolean = true) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -666,18 +769,8 @@ class AudioService {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     try {
-      let textToSpeak = (char || '').trim();
+      const textToSpeak = this.getSpellingPhonetic(char, lang);
       if (!textToSpeak) return;
-
-      if (lang === 'th') {
-        if (THAI_SPELLING_PHONETICS[textToSpeak]) {
-          textToSpeak = THAI_SPELLING_PHONETICS[textToSpeak];
-        } else if (THAI_LETTER_PHONETICS[textToSpeak]) {
-          textToSpeak = THAI_LETTER_PHONETICS[textToSpeak];
-        }
-      } else {
-        textToSpeak = textToSpeak.toUpperCase();
-      }
 
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
@@ -709,16 +802,8 @@ class AudioService {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     try {
-      let textToSpeak = (char || '').trim();
+      const textToSpeak = this.getLetterPhonetic(char, lang);
       if (!textToSpeak) return;
-
-      if (lang === 'th') {
-        if (THAI_LETTER_PHONETICS[textToSpeak]) {
-          textToSpeak = THAI_LETTER_PHONETICS[textToSpeak];
-        }
-      } else {
-        textToSpeak = textToSpeak.toUpperCase();
-      }
 
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
@@ -745,36 +830,44 @@ class AudioService {
     }
   }
 
-  // Speak the final character's spelling sound followed immediately by the full word
-  speakWordCompletion(finalChar: string, word: string, lang: Language) {
+  // Speak word completion with single-utterance zero-delay chaining (e.g. "อา ... ดา" or "กอ อา งอ ... กาง")
+  speakWordCompletion(
+    finalChar: string,
+    word: string,
+    lang: Language,
+    spellingMode: SpellingMode = 'snappy'
+  ) {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     try {
-      // 1. Prepare final char spelling text
-      let charText = (finalChar || '').trim();
-      if (lang === 'th') {
-        if (THAI_SPELLING_PHONETICS[charText]) {
-          charText = THAI_SPELLING_PHONETICS[charText];
-        } else if (THAI_LETTER_PHONETICS[charText]) {
-          charText = THAI_LETTER_PHONETICS[charText];
-        }
-      } else {
-        charText = charText.toUpperCase();
-      }
-
-      // 2. Prepare full word text
       let wordText = (word || '').trim();
       if (lang === 'th') {
-        if (wordText.length === 1 && THAI_LETTER_PHONETICS[wordText]) {
-          wordText = THAI_LETTER_PHONETICS[wordText];
-        }
         wordText = wordText.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '');
       }
 
-      if (!charText && !wordText) return;
-      if (!charText) {
-        this.speakWord(wordText, lang);
-        return;
+      if (!wordText) return;
+
+      let phraseToSpeak = '';
+
+      if (wordText.length === 1) {
+        // Single letter word (Stages 1-4) -> full phonetic letter sound (e.g. "ดอเด็ก", "ก ไก่")
+        phraseToSpeak = this.getLetterPhonetic(wordText, lang);
+      } else if (spellingMode === 'full') {
+        // Full Spelling Mode: e.g. "ดอ อา ... ดา" or "กอ อา งอ ... กาง" or "B I R D ... BIRD"
+        const tokens = this.getSpellingTokens(wordText, lang);
+        if (tokens.length > 0) {
+          phraseToSpeak = `${tokens.join(' ')} ... ${wordText}`;
+        } else {
+          phraseToSpeak = wordText;
+        }
+      } else {
+        // Snappy Finale Mode: e.g. "อา ... ดา" or "งอ ... กาง" or "D ... BIRD"
+        const charPhonetic = this.getSpellingPhonetic(finalChar, lang);
+        if (charPhonetic) {
+          phraseToSpeak = `${charPhonetic} ... ${wordText}`;
+        } else {
+          phraseToSpeak = wordText;
+        }
       }
 
       if (isDesktopPlatform()) {
@@ -787,45 +880,21 @@ class AudioService {
         ? (lang === 'th' ? this.bestThaiVoice : this.bestEnglishVoice)
         : null;
 
-      // Utterance 1: Final character spelling sound (e.g. "อา", "งอ", "D")
-      const charUtterance = new SpeechSynthesisUtterance(charText);
-      charUtterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
-      if (voice) charUtterance.voice = voice;
-      charUtterance.rate = isDesktopPlatform() ? 1.25 : 1.2;
-      charUtterance.pitch = isDesktopPlatform() ? 1.08 : 1.15;
+      const utterance = new SpeechSynthesisUtterance(phraseToSpeak);
+      utterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
+      if (voice) utterance.voice = voice;
 
-      // Utterance 2: Full word pronunciation (e.g. "ดา", "กาง", "bird")
-      const wordUtterance = new SpeechSynthesisUtterance(wordText);
-      wordUtterance.lang = lang === 'th' ? 'th-TH' : 'en-US';
-      if (voice) wordUtterance.voice = voice;
-      wordUtterance.rate = 1.05;
-      wordUtterance.pitch = isDesktopPlatform() ? 1.05 : 1.1;
-
-      // Track active utterances to prevent GC drop
-      this.activeUtterances.add(charUtterance);
-      this.activeUtterances.add(wordUtterance);
-
-      charUtterance.onend = () => {
-        this.activeUtterances.delete(charUtterance);
-      };
-      charUtterance.onerror = () => {
-        this.activeUtterances.delete(charUtterance);
-      };
-      wordUtterance.onend = () => {
-        this.activeUtterances.delete(wordUtterance);
-      };
-      wordUtterance.onerror = () => {
-        this.activeUtterances.delete(wordUtterance);
-      };
-
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+      if (isDesktopPlatform()) {
+        utterance.rate = 1.15; // Smooth, cheerful, clear cadence
+        utterance.pitch = 1.05;
+      } else {
+        utterance.rate = 1.1;
+        utterance.pitch = 1.15;
       }
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(charUtterance);
-      window.speechSynthesis.speak(wordUtterance);
-    } catch {
-      // Ignore
+
+      this.dispatchUtterance(utterance, true);
+    } catch (e) {
+      console.warn('speakWordCompletion error:', e);
     }
   }
 
@@ -838,11 +907,9 @@ class AudioService {
       if (!textToSpeak) return;
 
       if (lang === 'th') {
-        // If single character in Thai, use full phonetic description (e.g. ก ไก่, สะหร่ะ อา)
         if (textToSpeak.length === 1 && THAI_LETTER_PHONETICS[textToSpeak]) {
           textToSpeak = THAI_LETTER_PHONETICS[textToSpeak];
         }
-        // Normalize unicode NFC and remove invisible zero-width characters
         textToSpeak = textToSpeak.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '');
       }
 
@@ -857,10 +924,9 @@ class AudioService {
         if (voice) {
           utterance.voice = voice;
         }
-        utterance.rate = 1.05; // Crisp and immediate
+        utterance.rate = 1.05;
         utterance.pitch = 1.05;
       } else {
-        // Mobile (Android / iOS): Native default behavior 100%
         utterance.rate = 1.05;
         utterance.pitch = 1.1;
       }

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Settings, X, Target, Layers, Gauge, Maximize, Minimize, Volume2, VolumeX, Music, Mic, MicOff, RotateCcw, Zap, Sparkles } from 'lucide-react';
+import { Settings, X, Target, Layers, Gauge, Maximize, Minimize, Volume2, VolumeX, Music, Mic, MicOff, RotateCcw, Zap, Sparkles, GraduationCap } from 'lucide-react';
 import { GuiLanguage, TRANSLATIONS } from '../data/i18n';
-import { VoiceMode } from '../services/storageService';
+import { VoiceMode, SpellingMode } from '../services/storageService';
 
 interface GameSettingsModalProps {
   isOpen: boolean;
@@ -20,6 +20,8 @@ interface GameSettingsModalProps {
   onToggleBgm: () => void;
   voiceMode: VoiceMode;
   onChangeVoiceMode: (mode: VoiceMode) => void;
+  spellingMode: SpellingMode;
+  onChangeSpellingMode: (mode: SpellingMode) => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   guiLang: GuiLanguage;
@@ -52,6 +54,8 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
   onToggleBgm,
   voiceMode,
   onChangeVoiceMode,
+  spellingMode,
+  onChangeSpellingMode,
   isFullscreen,
   onToggleFullscreen,
   guiLang,
@@ -65,6 +69,7 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
     onChangeMaxConcurrentWords(4);
     onChangeSpeed(0.8);
     onChangeVoiceMode('fast');
+    onChangeSpellingMode('snappy');
     if (isSfxMuted) onToggleSfx();
     if (isVoiceMuted) onToggleVoice();
     if (isBgmMuted) onToggleBgm();
@@ -269,7 +274,80 @@ export const GameSettingsModal: React.FC<GameSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* 5. Display & Sound Toggles */}
+          {/* 5. Spelling Audio Style Selector (Snappy Finale vs Full Spelling Recap) */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-bold text-slate-200">{t.spellingModeTitle}</span>
+              </div>
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                spellingMode === 'snappy'
+                  ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30'
+                  : 'bg-indigo-400/10 text-indigo-400 border-indigo-400/30'
+              }`}>
+                {spellingMode === 'snappy' ? '⚡ Snappy Finale' : '🎓 Full Spelling'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400">
+              {t.spellingModeDesc}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Snappy Finale */}
+              <button
+                type="button"
+                onClick={() => onChangeSpellingMode('snappy')}
+                className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  spellingMode === 'snappy'
+                    ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200 shadow-md shadow-emerald-500/10'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                    {t.spellingModeSnappy}
+                  </span>
+                  {spellingMode === 'snappy' && (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/20 px-1.5 py-0.5 rounded">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] leading-tight text-slate-400">
+                  {t.spellingModeSnappyDesc}
+                </p>
+              </button>
+
+              {/* Full Spelling Recap */}
+              <button
+                type="button"
+                onClick={() => onChangeSpellingMode('full')}
+                className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                  spellingMode === 'full'
+                    ? 'bg-indigo-500/15 border-indigo-500/60 text-indigo-200 shadow-md shadow-indigo-500/10'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-indigo-400" />
+                    {t.spellingModeFull}
+                  </span>
+                  {spellingMode === 'full' && (
+                    <span className="text-[10px] font-bold text-indigo-400 bg-indigo-400/20 px-1.5 py-0.5 rounded">
+                      ACTIVE
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] leading-tight text-slate-400">
+                  {t.spellingModeFullDesc}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* 6. Display & Sound Toggles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Fullscreen Toggle */}
             <button

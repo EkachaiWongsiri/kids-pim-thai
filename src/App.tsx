@@ -16,7 +16,7 @@ import { THAI_STAGES, ENGLISH_STAGES } from './data/stagesData';
 import { Language, Stage, FallingWord, Particle, LaserBeam, FloatingText, GameStats } from './types/game';
 import { GuiLanguage, TRANSLATIONS } from './data/i18n';
 import { audioService } from './services/audioService';
-import { StorageService, VoiceMode, customStageToGameStage } from './services/storageService';
+import { StorageService, VoiceMode, SpellingMode, customStageToGameStage } from './services/storageService';
 import { AlertTriangle } from 'lucide-react';
 
 export function App() {
@@ -35,6 +35,7 @@ export function App() {
   const [isVoiceMuted, setIsVoiceMuted] = useState<boolean>(false);
   const [isBgmMuted, setIsBgmMuted] = useState<boolean>(false);
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('fast');
+  const [spellingMode, setSpellingMode] = useState<SpellingMode>('snappy');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
 
@@ -106,6 +107,7 @@ export function App() {
     startTime,
     targetCount: effectiveTargetCount,
     maxConcurrentWords,
+    spellingMode,
   });
 
   // Keep stateRef synced
@@ -122,6 +124,7 @@ export function App() {
       startTime,
       targetCount: effectiveTargetCount,
       maxConcurrentWords,
+      spellingMode,
     };
     livesRef.current = lives;
     scoreRef.current = score;
@@ -140,6 +143,7 @@ export function App() {
     startTime,
     effectiveTargetCount,
     maxConcurrentWords,
+    spellingMode,
     lives,
     score,
     combo,
@@ -187,6 +191,9 @@ export function App() {
     setVoiceMode(initialVoiceMode);
     audioService.setVoiceMode(initialVoiceMode);
 
+    const initialSpellingMode = saved.spellingMode || 'snappy';
+    setSpellingMode(initialSpellingMode);
+
     audioService.isSfxMuted = !saved.sfxEnabled;
     audioService.isVoiceMuted = !saved.voiceEnabled;
     audioService.isBgmMuted = !saved.bgmEnabled;
@@ -208,6 +215,7 @@ export function App() {
     }
     setCurrentStage(initialStage);
     setLanguage(initialStage.language);
+    audioService.preloadStagePhonetics(initialStage);
   }, []);
 
   // Sync BGM with game lifecycle
@@ -281,6 +289,7 @@ export function App() {
     } else {
       StorageService.saveSettings({ lastPlayedStageId: stage.id });
     }
+    audioService.preloadStagePhonetics(stage);
   }, []);
 
   // Trigger explosion particles at coordinates
@@ -318,6 +327,7 @@ export function App() {
       mistakes: curMistakes,
       lettersTyped: curLettersTyped,
       targetCount: curTargetCount,
+      spellingMode: curSpellingMode,
     } = stateRef.current;
 
     if (curState !== 'playing' || !curStarted || curPaused || wordsRef.current.length === 0) return;
@@ -363,7 +373,7 @@ export function App() {
 
           audioService.playLaserSound();
           audioService.playExplosionSound();
-          audioService.speakWordCompletion(expectedChar, targetWord.text, curStage.language);
+          audioService.speakWordCompletion(expectedChar, targetWord.text, curStage.language, curSpellingMode);
           triggerExplosion(targetWord.x, targetWord.y, targetWord.color);
 
           const newCombo = comboRef.current + 1;
@@ -760,6 +770,11 @@ export function App() {
     StorageService.saveSettings({ voiceMode: mode });
   };
 
+  const handleSpellingModeChange = (mode: SpellingMode) => {
+    setSpellingMode(mode);
+    StorageService.saveSettings({ spellingMode: mode });
+  };
+
   const handleLanguageChange = (newLang: Language) => {
     const stageList = newLang === 'th' ? THAI_STAGES : ENGLISH_STAGES;
     initStage(stageList[0], undefined, false);
@@ -894,6 +909,7 @@ export function App() {
                 guiLang={guiLang}
                 onStart={() => setIsGameStarted(true)}
                 speedMultiplier={speedMultiplier}
+                spellingMode={spellingMode}
               />
             )}
           </div>
@@ -964,6 +980,8 @@ export function App() {
         onToggleBgm={handleToggleBgm}
         voiceMode={voiceMode}
         onChangeVoiceMode={handleVoiceModeChange}
+        spellingMode={spellingMode}
+        onChangeSpellingMode={handleSpellingModeChange}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         guiLang={guiLang}

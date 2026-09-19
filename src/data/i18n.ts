@@ -21,6 +21,10 @@ export const TRANSLATIONS = {
     stageWordsToClear: 'คำเพื่อผ่านด่าน',
     tipsTitle: '💡 เคล็ดลับการฝึกพิมพ์:',
     tipsText: 'มองจอภาพและสังเกตแสงสีทองบนแป้นพิมพ์ด้านล่าง ไม่ต้องก้มมองแป้นพิมพ์จริง!',
+    audioStatusLoading: 'กำลังเตรียมระบบเสียงและคำอ่าน...',
+    audioStatusReady: 'ระบบเสียงพร้อมใช้งาน 100% (0ms)',
+    btnTestVoice: '🔊 ทดสอบเสียงคำศัพท์',
+    audioPreviewPlaying: 'กำลังเล่นเสียงตัวอย่าง...',
 
     // Game Header
     score: 'คะแนน',
@@ -102,6 +106,12 @@ export const TRANSLATIONS = {
     voiceModeFastDesc: 'สังเคราะห์เสียงในเครื่อง เหมาะสำหรับเล่นเกมกดเร็วๆ ลื่นไหลสะใจ',
     voiceModeNatural: '✨ เสียงธรรมชาติ AI (Natural AI)',
     voiceModeNaturalDesc: 'เสียงชัดเจนเป็นธรรมชาติที่สุด เหมาะสำหรับผู้ฝึกสะกดคำหรือชาวต่างชาติ (ใช้เน็ต)',
+    spellingModeTitle: 'รูปแบบการสะกดคำ (Spelling Audio Style)',
+    spellingModeDesc: 'เลือกรูปแบบเสียงอ่านเมื่อพิมพ์คำศัพท์สำเร็จ',
+    spellingModeSnappy: '⚡ สะกดตัวจบ + คำเต็ม (Snappy Finale)',
+    spellingModeSnappyDesc: 'พิมพ์ตัวไหนอ่านตัวนั้น เมื่อพิมพ์ตัวสุดท้ายจะอ่านเสียงตัวสุดท้ายแล้วต่อด้วยคำเต็มทันที ไม่สะดุด (เช่น อา ... ดา)',
+    spellingModeFull: '🎓 สะกดทุกตัว + คำเต็ม (Full Spelling Recap)',
+    spellingModeFullDesc: 'เมื่อพิมพ์ครบคำ จะทวนการสะกดทุกตัวอักษรทีเดียวแล้วอ่านคำเต็ม เหมาะสำหรับท่องจำคำศัพท์เตรียมสอบ (เช่น ดอ อา ... ดา)',
 
     // Caps Lock Warning
     capsLockTitle: 'ปุ่ม Caps Lock เปิดอยู่!',
@@ -199,6 +209,10 @@ export const TRANSLATIONS = {
     stageWordsToClear: 'words to clear',
     tipsTitle: '💡 Typing Tip:',
     tipsText: 'Keep your eyes on the screen and follow the glowing key guides below without looking down!',
+    audioStatusLoading: 'Preparing speech & phonetics...',
+    audioStatusReady: 'Zero-Delay Audio Ready 100% (0ms)',
+    btnTestVoice: '🔊 Test Voice Preview',
+    audioPreviewPlaying: 'Playing preview audio...',
 
     // Game Header
     score: 'Score',
@@ -282,6 +296,12 @@ export const TRANSLATIONS = {
     voiceModeFastDesc: 'Offline synthesizer in your device. Instant reaction, perfect for fast typing.',
     voiceModeNatural: '✨ Natural AI Voice Mode',
     voiceModeNaturalDesc: 'High-quality natural AI voice. Perfect for learners & pronunciation (uses internet).',
+    spellingModeTitle: 'Spelling Audio Style',
+    spellingModeDesc: 'Choose audio feedback style upon completing words',
+    spellingModeSnappy: '⚡ Snappy Finale (End Letter + Word)',
+    spellingModeSnappyDesc: 'Speaks each character while typing, and immediately links final character into full word smoothly (e.g. "D ... BIRD").',
+    spellingModeFull: '🎓 Full Spelling Recap (All Letters + Word)',
+    spellingModeFullDesc: 'Speaks every character sequence upon completion before the word, ideal for exam spelling practice (e.g. "B I R D ... BIRD").',
 
     // Caps Lock Warning
     capsLockTitle: 'Caps Lock is ON!',

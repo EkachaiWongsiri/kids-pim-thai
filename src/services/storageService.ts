@@ -1,6 +1,7 @@
 import { Language, Stage, CustomStage } from '../types/game';
 
 export type VoiceMode = 'fast' | 'natural';
+export type SpellingMode = 'snappy' | 'full';
 
 export interface SavedSettings {
   sfxEnabled: boolean;
@@ -12,6 +13,7 @@ export interface SavedSettings {
   targetWordsCount: number;
   maxConcurrentWords: number;
   voiceMode: VoiceMode;
+  spellingMode: SpellingMode;
 }
 
 export interface StageScore {
@@ -72,6 +74,7 @@ const DEFAULT_SETTINGS: SavedSettings = {
   targetWordsCount: 10,
   maxConcurrentWords: 4,
   voiceMode: 'fast',
+  spellingMode: 'snappy',
 };
 
 // Helper: Convert CustomStage to playable Stage
